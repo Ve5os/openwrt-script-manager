@@ -1,35 +1,3 @@
-#!/bin/sh
-set -eu
-
-BASE="/etc/openwrt-script-manager"
-WEB="/www/openwrt-script-manager"
-LIB="/usr/lib/openwrt-script-manager"
-INIT="/etc/init.d/openwrt-script-manager"
-
-REPO="Ve5os/openwrt-script-manager"
-BRANCH="main"
-ARCHIVE_URL="https://github.com/${REPO}/archive/refs/heads/${BRANCH}.tar.gz"
-
-[ "$(id -u)" = "0" ] || { echo "Run as root."; exit 1; }
-
-TMP="/tmp/openwrt-script-manager-install.$$"
-ARCHIVE="$TMP/repo.tar.gz"
-
-cleanup() {
-    rm -rf "$TMP"
-}
-trap cleanup EXIT INT TERM
-
-echo "==> Downloading OpenWrt Script Manager from GitHub..."
-mkdir -p "$TMP"
-
-if command -v wget >/dev/null 2>&1; then
-    wget -qO "$ARCHIVE" "$ARCHIVE_URL"
-elif command -v uclient-fetch >/dev/null 2>&1; then
-    uclient-fetch -qO "$ARCHIVE" "$ARCHIVE_URL"
-else
-    echo "ERROR: wget or uclient-fetch is required."
-    exit 1
 fi
 
 echo "==> Extracting..."
@@ -128,3 +96,4 @@ echo "=============================================="
 echo "Open:      http://ROUTER_IP:9696"
 echo "Repository: https://github.com/${REPO}"
 echo "Uninstall:  sh /usr/lib/openwrt-script-manager/uninstall.sh"
+
