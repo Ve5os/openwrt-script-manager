@@ -1,42 +1,60 @@
-# OpenWrt Script Manager v2
+# OpenWrt Script Manager
 
-Standalone web panel for OpenWrt.
+Лёгкий веб-интерфейс для управления пользовательскими shell-скриптами на OpenWrt.
 
-- URL: http://ROUTER_IP:9696
-- Login with the OpenWrt/LuCI admin password.
-- No LuCI application page is required.
-- Backend is a small POSIX shell CGI-style HTTP server using BusyBox `httpd`.
-- Scripts are stored in `/etc/openwrt-script-manager/scripts`.
-- Cron is managed in `/etc/crontabs/root` inside a marked block.
-- Existing unrelated cron entries are preserved.
+## Возможности
 
-## Install from GitHub
+- список скриптов из `/etc/my_scripts`;
+- создание и редактирование `.sh`-файлов;
+- расписание BusyBox cron;
+- включение/выключение скрипта в `/etc/crontabs/root`;
+- ручной запуск без аргументов;
+- вывод stdout + stderr до 4 KiB;
+- удаление скриптов;
+- авторизация штатным механизмом uhttpd с тем же паролем `root`, что используется LuCI;
+- интерфейс без CDN, фреймворков и сборки.
 
-After publishing this repository, installation is a single command:
+## Требования
 
-    sh -c "$(wget -qO- https://raw.githubusercontent.com/OWNER/REPO/main/install.sh)"
+OpenWrt 24.x с установленными `uhttpd` и `cron`. `jsonfilter` используется для разбора JSON; установщик пытается поставить его, если пакет отсутствует. CGI содержит fallback-парсер для простых JSON-запросов.
 
-The installer downloads the current project archive from GitHub, installs the service,
-asks for the OpenWrt/LuCI admin password, enables the service and starts it.
+## Установка
 
-You can also explicitly select a repository/branch:
+```sh
+wget -O - https://raw.githubusercontent.com/Ve5os/openwrt-script-manager/main/install.sh | sh
+```
 
-    GITHUB_REPO=OWNER/REPO GITHUB_BRANCH=main sh -c "$(wget -qO- https://raw.githubusercontent.com/OWNER/REPO/main/install.sh)"
+После установки:
 
-No files need to be manually copied to the router.
+```text
+http://<IP-роутера>:9696
+```
 
-Then open:
+Логин: `root`.
 
-    http://ROUTER_IP:9696
+Пароль: тот же пароль, который используется для входа в LuCI.
 
-## Uninstall
+## Файлы на роутере
 
-    sh /usr/lib/openwrt-script-manager/uninstall.sh
+```text
+/www-script-manager/
+├── index.html
+├── style.css
+├── app.js
+└── cgi-bin/
+    └── api.sh
 
-The uninstall removes the service, web assets and only the Script Manager cron block.
-User scripts/configuration are retained.
+/etc/my_scripts/
+/etc/crontabs/root
+/etc/config/uhttpd
+```
 
-## Notes
+## Безопасность
 
-This version is deliberately self-contained and does not require Python, Node.js, PHP,
-or a LuCI extension.
+Имя скрипта принимается только в формате `^[a-zA-Z0-9_-]+\.sh$`. Пути формируются исключительно внутри `/etc/my_scripts/`. Пользовательский ввод не передаётся в `eval`. Ручной запуск выполняется только по абсолютному пути и без аргументов.
+
+Изменения файлов выполняются через временный файл и `mv`. Изменения crontab после операции применяются через `cron reload`.
+
+## Повторная установка
+
+Повторный запуск установщика обновляет файлы приложения и конфигурацию uhttpd, но не удаляет пользовательские скрипты из `/etc/my_scripts` и не создаёт дубликаты секций `script_manager` / `script_manager_auth`.

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Script Manager</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">&gt;_</div>
+        <div>
+          <div class="brand-title">Script Manager</div>
+          <div class="brand-subtitle">OpenWrt</div>
+        </div>
+      </div>
+
+      <div class="sidebar-head">
+        <span>Скрипты</span>
+        <button id="newBtn" class="icon-btn" title="Новый скрипт">＋</button>
+      </div>
+
+      <div id="scriptList" class="script-list"></div>
+      <div id="emptyList" class="empty-list hidden">Скриптов пока нет</div>
+    </aside>
+
+    <main class="main">
+      <div id="editorEmpty" class="editor-empty">
+        <div class="empty-icon">⌘</div>
+        <h1>Выберите скрипт</h1>
+        <p>Или создайте новый через кнопку «＋».</p>
+      </div>
+
+      <section id="editor" class="editor hidden">
+        <header class="editor-header">
+          <div>
+            <div class="eyebrow">Пользовательский скрипт</div>
+            <h1 id="editorTitle">Новый скрипт</h1>
+          </div>
+          <div id="statusBadge" class="status-badge off">Выкл.</div>
+        </header>
+
+        <div class="form-grid">
+          <label class="field">
+            <span>Имя файла</span>
+            <input id="nameInput" type="text" autocomplete="off" spellcheck="false" placeholder="example.sh">
+          </label>
+          <label class="field">
+            <span>Расписание cron</span>
+            <input id="scheduleInput" type="text" autocomplete="off" spellcheck="false" value="*/1 * * * *">
+          </label>
+        </div>
+
+        <label class="field script-field">
+          <span>Содержимое</span>
+          <textarea id="contentInput" spellcheck="false" placeholder="#!/bin/sh\necho &quot;Hello, OpenWrt!&quot;"></textarea>
+        </label>
+
+        <div id="outputWrap" class="output-wrap hidden">
+          <div class="output-head"><span>Результат выполнения</span><button id="clearOutputBtn" class="text-btn">Очистить</button></div>
+          <pre id="output"></pre>
+        </div>
+
+        <footer class="actions">
+          <div class="actions-left">
+            <button id="saveBtn" class="btn primary">Сохранить</button>
+            <button id="runBtn" class="btn secondary">▶ Выполнить сейчас</button>
+          </div>
+          <div class="actions-right">
+            <label class="toggle-row">
+              <span>Включён в cron</span>
+              <input id="enabledToggle" type="checkbox">
+              <span class="toggle"></span>
+            </label>
+            <button id="deleteBtn" class="btn danger">Удалить</button>
+          </div>
+        </footer>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>
