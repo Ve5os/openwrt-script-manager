@@ -10,17 +10,20 @@ Standalone web panel for OpenWrt.
 - Cron is managed in `/etc/crontabs/root` inside a marked block.
 - Existing unrelated cron entries are preserved.
 
-## Install
+## Install from GitHub
 
-Copy the archive to the router and run:
+After publishing this repository, installation is a single command:
 
-    mkdir -p /tmp/osm
-    tar -xzf openwrt-script-manager-v2.tar.gz -C /tmp/osm
-    sh /tmp/osm/install.sh
+    sh -c "$(wget -qO- https://raw.githubusercontent.com/OWNER/REPO/main/install.sh)"
 
-Or, after putting `install.sh` on the router:
+The installer downloads the current project archive from GitHub, installs the service,
+asks for the OpenWrt/LuCI admin password, enables the service and starts it.
 
-    sh /tmp/install.sh
+You can also explicitly select a repository/branch:
+
+    GITHUB_REPO=OWNER/REPO GITHUB_BRANCH=main sh -c "$(wget -qO- https://raw.githubusercontent.com/OWNER/REPO/main/install.sh)"
+
+No files need to be manually copied to the router.
 
 Then open:
 
