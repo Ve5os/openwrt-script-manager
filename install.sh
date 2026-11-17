@@ -1,92 +1,108 @@
 #!/bin/sh
 set -eu
 
-# ============================================================
-# OpenWrt Script Manager
-# GitHub bootstrap installer
-#
-# Normal installation from GitHub:
-#   sh -c "$(wget -qO- https://raw.githubusercontent.com/OWNER/REPO/main/install.sh)"
-#
-# The first line below is the only repository setting that must
-# be changed once the project is published.
-# ============================================================
+# OpenWrt Script Manager - GitHub installer
+# Repository: https://github.com/Ve5os/openwrt-script-manager
+# Install:
+#   sh -c "$(wget -qO- https://raw.githubusercontent.com/Ve5os/openwrt-script-manager/refs/heads/main/install.sh)"
 
-GITHUB_REPO="${GITHUB_REPO:-OWNER/REPO}"
-GITHUB_BRANCH="${GITHUB_BRANCH:-main}"
+REPO="Ve5os/openwrt-script-manager"
+BRANCH="main"
 
 BASE="/etc/openwrt-script-manager"
 LIB="/usr/lib/openwrt-script-manager"
 WEB="/www/openwrt-script-manager"
 INIT="/etc/init.d/openwrt-script-manager"
 
-[ "$(id -u)" = "0" ] || { echo "Run as root."; exit 1; }
+[ "$(id -u)" = "0" ] || {
+    echo "ERROR: run this installer as root."
+    exit 1
+}
 
 TMP="/tmp/openwrt-script-manager-install.$$"
 ARCHIVE="$TMP/repo.tar.gz"
-SRC="$TMP/src"
+mkdir -p "$TMP"
 
 cleanup() {
     rm -rf "$TMP"
 }
-trap cleanup EXIT
+trap cleanup EXIT INT TERM
 
-download_repo() {
-    mkdir -p "$TMP"
-    URL="https://github.com/$GITHUB_REPO/archive/refs/heads/$GITHUB_BRANCH.tar.gz"
-    echo "Downloading OpenWrt Script Manager from GitHub..."
-    if command -v wget >/dev/null 2>&1; then
-        wget -qO "$ARCHIVE" "$URL" || {
-            echo "Download failed: $URL"
-            exit 1
-        }
-    else
-        echo "wget is required."
-        exit 1
-    fi
-    mkdir -p "$SRC"
-    tar -xzf "$ARCHIVE" -C "$SRC"
-    ROOT="$(find "$SRC" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
-    [ -n "$ROOT" ] || { echo "Invalid GitHub archive."; exit 1; }
-}
+echo "==> Downloading OpenWrt Script Manager from GitHub..."
 
-install_files() {
-    mkdir -p "$BASE/scripts" "$BASE/logs" "$LIB" "$WEB"
+URL="https://github.com/$REPO/archive/refs/heads/$BRANCH.tar.gz"
 
-    cp "$ROOT/files/usr/lib/openwrt-script-manager/server.sh" "$LIB/server.sh"
-    cp "$ROOT/files/usr/lib/openwrt-script-manager/manager.sh" "$LIB/manager.sh"
-    cp "$ROOT/files/usr/lib/openwrt-script-manager/auth.sh" "$LIB/auth.sh"
-    cp "$ROOT/files/etc/init.d/openwrt-script-manager" "$INIT"
-    cp "$ROOT/files/www/openwrt-script-manager/index.html" "$WEB/index.html"
-    cp "$ROOT/files/www/openwrt-script-manager/app.js" "$WEB/app.js"
-    cp "$ROOT/files/www/openwrt-script-manager/style.css" "$WEB/style.css"
+if ! command -v wget >/dev/null 2>&1; then
+    echo "ERROR: wget is required."
+    exit 1
+fi
 
-    chmod 755 "$LIB/server.sh" "$LIB/manager.sh" "$LIB/auth.sh" "$INIT" "$WEB/app.js"
-    chmod 700 "$BASE" "$BASE/scripts" "$BASE/logs"
+if ! wget -qO "$ARCHIVE" "$URL"; then
+    echo "ERROR: failed to download:"
+    echo "       $URL"
+    exit 1
+fi
 
-    touch "$BASE/config"
-    chmod 600 "$BASE/config"
+mkdir -p "$TMP/src"
 
-    if ! grep -q '^PORT=' "$BASE/config" 2>/dev/null; then
-        cat > "$BASE/config" <<EOF
+if ! tar -xzf "$ARCHIVE" -C "$TMP/src"; then
+    echo "ERROR: failed to unpack GitHub archive."
+    exit 1
+fi
+
+ROOT="$(find "$TMP/src" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+
+if [ -z "$ROOT" ] || [ ! -d "$ROOT/files" ]; then
+    echo "ERROR: repository has an invalid structure."
+    exit 1
+fi
+
+echo "==> Installing files..."
+
+mkdir -p "$BASE/scripts" "$BASE/logs" "$LIB" "$WEB"
+
+cp "$ROOT/files/usr/lib/openwrt-script-manager/server.sh" "$LIB/server.sh"
+cp "$ROOT/files/usr/lib/openwrt-script-manager/manager.sh" "$LIB/manager.sh"
+cp "$ROOT/files/usr/lib/openwrt-script-manager/auth.sh" "$LIB/auth.sh"
+
+cp "$ROOT/files/etc/init.d/openwrt-script-manager" "$INIT"
+
+cp "$ROOT/files/www/openwrt-script-manager/index.html" "$WEB/index.html"
+cp "$ROOT/files/www/openwrt-script-manager/app.js" "$WEB/app.js"
+cp "$ROOT/files/www/openwrt-script-manager/style.css" "$WEB/style.css"
+
+chmod 755 \
+    "$LIB/server.sh" \
+    "$LIB/manager.sh" \
+    "$LIB/auth.sh" \
+    "$INIT" \
+    "$WEB/app.js"
+
+chmod 700 "$BASE" "$BASE/scripts" "$BASE/logs"
+
+touch "$BASE/config"
+chmod 600 "$BASE/config"
+
+if ! grep -q '^PORT=' "$BASE/config" 2>/dev/null; then
+    cat > "$BASE/config" <<EOF
 PORT=9696
 BIND=0.0.0.0
 SESSION_MINUTES=30
 EOF
-    fi
+fi
 
-    mkdir -p /etc/crontabs
-    touch /etc/crontabs/root
-    chmod 600 /etc/crontabs/root
-}
+mkdir -p /etc/crontabs
+touch /etc/crontabs/root
+chmod 600 /etc/crontabs/root
 
-setup_password() {
-    if grep -q '^PASSWORD_HASH=' "$BASE/config" 2>/dev/null; then
-        echo "Existing Script Manager password retained."
-        return
-    fi
+if ! grep -q '^PASSWORD_HASH=' "$BASE/config" 2>/dev/null; then
+    echo
+    echo "=============================================="
+    echo "Script Manager administrator password"
+    echo "=============================================="
+    echo "Use the same password you use for LuCI."
+    echo
 
-    printf "Enter the OpenWrt/LuCI admin password for Script Manager.\n"
     printf "Password: "
     stty -echo
     IFS= read -r PW
@@ -95,25 +111,30 @@ setup_password() {
 
     HASH="$(printf '%s' "$PW" | "$LIB/auth.sh" hash)"
     unset PW
+
     printf 'PASSWORD_HASH=%s\n' "$HASH" >> "$BASE/config"
-}
+else
+    echo "==> Existing Script Manager password retained."
+fi
 
-restart_service() {
-    "$INIT" enable
-    "$INIT" restart
-}
+echo "==> Enabling service..."
 
-download_repo
-install_files
-setup_password
-restart_service
+"$INIT" enable
+"$INIT" restart
+
+sleep 1
 
 echo
 echo "=============================================="
-echo "OpenWrt Script Manager installed successfully"
+echo " OpenWrt Script Manager installed"
 echo "=============================================="
 echo
-echo "Open:      http://ROUTER_IP:9696"
-echo "Repository: https://github.com/$GITHUB_REPO"
-echo "Uninstall: sh /usr/lib/openwrt-script-manager/uninstall.sh"
+echo " URL:"
+echo "   http://ROUTER_IP:9696"
+echo
+echo " Repository:"
+echo "   https://github.com/$REPO"
+echo
+echo " Uninstall:"
+echo "   sh /usr/lib/openwrt-script-manager/uninstall.sh"
 echo
