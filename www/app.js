@@ -1,5 +1,7 @@
 'use strict';
 
+const BUILD_VERSION = '2026.11.18.01';
+
 const state = { scripts: [], current: null, creating: false };
 const $ = (id) => document.getElementById(id);
 

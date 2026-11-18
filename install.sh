@@ -5,6 +5,7 @@
 set -eu
 
 REPO_BASE="https://raw.githubusercontent.com/Ve5os/openwrt-script-manager/main"
+BUILD_VERSION="2026.11.18.01"
 TMP_DIR="/tmp/openwrt-script-manager-install.$$"
 WEB_ROOT="/www-script-manager"
 SCRIPT_DIR="/etc/my_scripts"
@@ -115,5 +116,6 @@ fi
 log "Установка завершена"
 printf '\n========================================\n'
 printf ' OpenWrt Script Manager\n'
+printf ' Build: %s\n' "$BUILD_VERSION"
 printf ' URL: http://%s:9696\n' "$IP"
 printf '========================================\n'
