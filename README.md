@@ -1,4 +1,5 @@
 # OpenWrt Script Manager
+<img width="877" height="1191" alt="изображение" src="https://github.com/user-attachments/assets/84e52326-8793-489b-981c-00eb4060767f" />
 
 Лёгкий веб-интерфейс для управления пользовательскими shell-скриптами на OpenWrt.
 
