@@ -1,7 +1,6 @@
 'use strict';
 
-const BUILD_VERSION = '2026.11.18.02';
-
+const BUILD_VERSION = '2026.11.18.04';
 const state = { scripts: [], current: null, creating: false };
 const $ = (id) => document.getElementById(id);
 
@@ -13,14 +12,12 @@ function showToast(message, error = false) {
   showToast.timer = setTimeout(() => { el.className = 'toast'; }, 3200);
 }
 
-async function api(action, data = null) {
-  const options = data === null ? { method: 'GET' } : {
+async function api(action, data = {}) {
+  const response = await fetch('/cgi-bin/api.sh', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action, ...data })
-  };
-  const url = data === null ? `/cgi-bin/api.sh?action=${encodeURIComponent(action)}${data?.name ? `&name=${encodeURIComponent(data.name)}` : ''}` : '/cgi-bin/api.sh';
-  const response = await fetch(url, options);
+  });
   let result;
   try { result = await response.json(); } catch (_) { throw new Error(`Сервер вернул некорректный ответ (${response.status})`); }
   if (!response.ok) throw new Error(result.error || `Ошибка HTTP ${response.status}`);
@@ -36,22 +33,24 @@ async function apiGet(action, params = {}) {
   return result;
 }
 
+function displayName(name) {
+  return name.endsWith('.sh') ? name.slice(0, -3) : name;
+}
+
 function renderList() {
   const list = $('scriptList');
   list.innerHTML = '';
   $('emptyList').classList.toggle('hidden', state.scripts.length !== 0);
-
   for (const script of state.scripts) {
     const button = document.createElement('button');
     button.className = `script-item${state.current === script.name ? ' active' : ''}`;
     button.type = 'button';
     button.addEventListener('click', () => openScript(script.name));
-
     const dot = document.createElement('span');
     dot.className = `script-dot${script.enabled ? ' on' : ''}`;
     const name = document.createElement('span');
     name.className = 'script-name';
-    name.textContent = script.name;
+    name.textContent = displayName(script.name);
     button.append(dot, name);
     list.appendChild(button);
   }
@@ -73,13 +72,123 @@ function clearOutput() {
   $('outputWrap').classList.add('hidden');
 }
 
+function cronFromUi() {
+  const type = document.querySelector('input[name="scheduleType"]:checked').value;
+  if (type === 'interval') {
+    const value = Math.max(1, Number.parseInt($('intervalValue').value, 10) || 1);
+    const unit = $('intervalUnit').value;
+    if (unit === 'minute') {
+      if (value > 59) throw new Error('Для минут можно указать значение от 1 до 59');
+      return `*/${value} * * * *`;
+    }
+    if (unit === 'hour') {
+      if (value > 23) throw new Error('Для часов можно указать значение от 1 до 23');
+      return `0 */${value} * * *`;
+    }
+    if (value > 31) throw new Error('Для дней можно указать значение от 1 до 31');
+    return `0 0 */${value} * *`;
+  }
+
+  const time = type === 'daily' ? $('dailyTime').value : $('weeklyTime').value;
+  if (!/^\d{2}:\d{2}$/.test(time)) throw new Error('Укажите корректное время');
+  const [hour, minute] = time.split(':').map(Number);
+
+  if (type === 'daily') return `${minute} ${hour} * * *`;
+
+  const days = [...document.querySelectorAll('#weeklySettings .day-option input:checked')].map((el) => el.value);
+  if (!days.length) throw new Error('Выберите хотя бы один день недели');
+  return `${minute} ${hour} * * ${days.join(',')}`;
+}
+
+function humanSchedule() {
+  const type = document.querySelector('input[name="scheduleType"]:checked').value;
+  if (type === 'interval') {
+    const value = Math.max(1, Number.parseInt($('intervalValue').value, 10) || 1);
+    const unit = $('intervalUnit').value;
+    if (unit === 'minute') return value === 1 ? 'каждую минуту' : `каждые ${value} мин.`;
+    if (unit === 'hour') return value === 1 ? 'каждый час' : `каждые ${value} ч.`;
+    return value === 1 ? 'каждый день' : `каждые ${value} дн.`;
+  }
+  const time = type === 'daily' ? $('dailyTime').value : $('weeklyTime').value;
+  if (type === 'daily') return `каждый день в ${time}`;
+  const names = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+  const days = [...document.querySelectorAll('#weeklySettings .day-option input:checked')].map((el) => names[Number(el.value)]);
+  return `${days.join(', ')} в ${time}`;
+}
+
+function updateScheduleUi() {
+  const type = document.querySelector('input[name="scheduleType"]:checked').value;
+  $('intervalSettings').classList.toggle('hidden', type !== 'interval');
+  $('dailySettings').classList.toggle('hidden', type !== 'daily');
+  $('weeklySettings').classList.toggle('hidden', type !== 'weekly');
+  $('humanSchedule').textContent = humanSchedule();
+  $('scheduleSummary').textContent = humanSchedule();
+}
+
+function parseCronToUi(schedule) {
+  const value = (schedule || '*/1 * * * *').trim();
+  const parts = value.split(/\s+/);
+  if (parts.length !== 5) return false;
+
+  const [minute, hour, day, month, weekday] = parts;
+  if (/^\*\/([1-9]\d*)$/.test(minute) && hour === '*' && day === '*' && month === '*' && weekday === '*') {
+    $('scheduleTypeInterval').checked = true;
+    $('intervalValue').value = RegExp.$1;
+    $('intervalUnit').value = 'minute';
+    updateScheduleUi();
+    return true;
+  }
+  if (minute === '0' && /^\*\/([1-9]\d*)$/.test(hour) && day === '*' && month === '*' && weekday === '*') {
+    $('scheduleTypeInterval').checked = true;
+    $('intervalValue').value = RegExp.$1;
+    $('intervalUnit').value = 'hour';
+    updateScheduleUi();
+    return true;
+  }
+  if (minute === '0' && hour === '0' && /^\*\/([1-9]\d*)$/.test(day) && month === '*' && weekday === '*') {
+    $('scheduleTypeInterval').checked = true;
+    $('intervalValue').value = RegExp.$1;
+    $('intervalUnit').value = 'day';
+    updateScheduleUi();
+    return true;
+  }
+  if (/^\d+$/.test(minute) && /^\d+$/.test(hour) && day === '*' && month === '*' && weekday === '*') {
+    $('scheduleTypeDaily').checked = true;
+    $('dailyTime').value = `${String(Number(hour)).padStart(2, '0')}:${String(Number(minute)).padStart(2, '0')}`;
+    updateScheduleUi();
+    return true;
+  }
+  if (/^\d+$/.test(minute) && /^\d+$/.test(hour) && day === '*' && month === '*' && /^[0-6](,[0-6])*$/.test(weekday)) {
+    $('scheduleTypeWeekly').checked = true;
+    document.querySelectorAll('#weeklySettings .day-option input').forEach((el) => { el.checked = false; });
+    weekday.split(',').forEach((d) => {
+      const el = document.querySelector(`#weeklySettings .day-option input[value="${d}"]`);
+      if (el) el.checked = true;
+    });
+    $('weeklyTime').value = `${String(Number(hour)).padStart(2, '0')}:${String(Number(minute)).padStart(2, '0')}`;
+    updateScheduleUi();
+    return true;
+  }
+  return false;
+}
+
+function setScheduleFromCron(schedule) {
+  const parsed = parseCronToUi(schedule);
+  if (!parsed) {
+    $('scheduleTypeInterval').checked = true;
+    $('intervalValue').value = 1;
+    $('intervalUnit').value = 'minute';
+    updateScheduleUi();
+    showToast('Старое расписание не распознано — выбрано «каждую минуту».', true);
+  }
+}
+
 async function refreshList(selectCurrent = true) {
   const result = await apiGet('list');
   state.scripts = result.scripts || [];
   renderList();
   if (selectCurrent && state.current && state.scripts.some(s => s.name === state.current)) {
-    const item = state.scripts.find(s => s.name === state.current);
-    updateStatus(item.enabled);
+    updateStatus(state.scripts.find(s => s.name === state.current).enabled);
   }
 }
 
@@ -88,18 +197,16 @@ async function openScript(name) {
     const result = await apiGet('get', { name });
     state.current = result.name;
     state.creating = false;
-    $('editorTitle').textContent = result.name;
-    $('nameInput').value = result.name;
+    $('editorTitle').textContent = displayName(result.name);
+    $('nameInput').value = displayName(result.name);
     $('nameInput').readOnly = true;
-    $('scheduleInput').value = result.schedule || '*/1 * * * *';
+    setScheduleFromCron(result.schedule || '*/1 * * * *');
     $('contentInput').value = result.content || '';
     updateStatus(result.enabled);
     clearOutput();
     setEditorVisible(true);
     renderList();
-  } catch (error) {
-    showToast(error.message, true);
-  }
+  } catch (error) { showToast(error.message, true); }
 }
 
 function newScript() {
@@ -108,8 +215,11 @@ function newScript() {
   $('editorTitle').textContent = 'Новый скрипт';
   $('nameInput').value = '';
   $('nameInput').readOnly = false;
-  $('scheduleInput').value = '*/1 * * * *';
+  $('scheduleTypeInterval').checked = true;
+  $('intervalValue').value = 1;
+  $('intervalUnit').value = 'minute';
   $('contentInput').value = '#!/bin/sh\n\n';
+  updateScheduleUi();
   updateStatus(false);
   clearOutput();
   setEditorVisible(true);
@@ -118,35 +228,33 @@ function newScript() {
 }
 
 async function saveScript() {
-  const name = $('nameInput').value.trim();
+  const rawName = $('nameInput').value.trim();
+  const name = rawName.endsWith('.sh') ? rawName : `${rawName}.sh`;
   const content = $('contentInput').value;
-  const schedule = $('scheduleInput').value.trim();
-  if (!/^[a-zA-Z0-9_-]+\.sh$/.test(name)) {
-    showToast('Имя должно соответствовать формату example.sh', true);
+  let schedule;
+  if (!/^[a-zA-Z0-9_-]+$/.test(rawName.replace(/\.sh$/, ''))) {
+    showToast('Имя может содержать только латинские буквы, цифры, _ и -', true);
     return;
   }
-  if (schedule.split(/\s+/).length !== 5) {
-    showToast('Cron-расписание должно содержать 5 полей', true);
-    return;
-  }
+  try { schedule = cronFromUi(); } catch (error) { showToast(error.message, true); return; }
   try {
     await api('save', { name, content, schedule });
     state.current = name;
     state.creating = false;
     $('nameInput').readOnly = true;
-    $('editorTitle').textContent = name;
+    $('editorTitle').textContent = displayName(name);
     showToast('Скрипт сохранён');
     await refreshList();
-  } catch (error) {
-    showToast(error.message, true);
-  }
+  } catch (error) { showToast(error.message, true); }
 }
 
 async function toggleScript() {
   if (!state.current) return;
   const enabled = $('enabledToggle').checked;
+  let schedule;
+  try { schedule = cronFromUi(); } catch (error) { $('enabledToggle').checked = !enabled; showToast(error.message, true); return; }
   try {
-    await api('toggle', { name: state.current, enabled, schedule: $('scheduleInput').value.trim() || '*/1 * * * *' });
+    await api('toggle', { name: state.current, enabled, schedule });
     updateStatus(enabled);
     await refreshList();
     showToast(enabled ? 'Скрипт включён в cron' : 'Скрипт отключён');
@@ -165,17 +273,13 @@ async function runScript() {
     const result = await api('run', { name: state.current });
     $('output').textContent = `${result.output || '(нет вывода)'}\n\n[Код завершения: ${result.exit_code ?? 0}]`;
     $('outputWrap').classList.remove('hidden');
-  } catch (error) {
-    showToast(error.message, true);
-  } finally {
-    $('runBtn').disabled = false;
-    $('runBtn').textContent = '▶ Выполнить сейчас';
-  }
+  } catch (error) { showToast(error.message, true); }
+  finally { $('runBtn').disabled = false; $('runBtn').textContent = '▶ Выполнить сейчас'; }
 }
 
 async function deleteScript() {
   if (!state.current) return;
-  if (!window.confirm(`Удалить ${state.current}?`)) return;
+  if (!window.confirm(`Удалить ${displayName(state.current)}?`)) return;
   try {
     await api('delete', { name: state.current });
     state.current = null;
@@ -183,9 +287,7 @@ async function deleteScript() {
     setEditorVisible(false);
     await refreshList(false);
     showToast('Скрипт удалён');
-  } catch (error) {
-    showToast(error.message, true);
-  }
+  } catch (error) { showToast(error.message, true); }
 }
 
 $('newBtn').addEventListener('click', newScript);
@@ -194,11 +296,16 @@ $('enabledToggle').addEventListener('change', toggleScript);
 $('runBtn').addEventListener('click', runScript);
 $('deleteBtn').addEventListener('click', deleteScript);
 $('clearOutputBtn').addEventListener('click', clearOutput);
+document.querySelectorAll('input[name="scheduleType"]').forEach((el) => el.addEventListener('change', updateScheduleUi));
+$('intervalValue').addEventListener('input', updateScheduleUi);
+$('intervalUnit').addEventListener('change', updateScheduleUi);
+$('dailyTime').addEventListener('change', updateScheduleUi);
+$('weeklyTime').addEventListener('change', updateScheduleUi);
+document.querySelectorAll('#weeklySettings .day-option input').forEach((el) => el.addEventListener('change', updateScheduleUi));
 
 (async function init() {
   try {
     await refreshList(false);
-  } catch (error) {
-    showToast(error.message, true);
-  }
+    updateScheduleUi();
+  } catch (error) { showToast(error.message, true); }
 })();

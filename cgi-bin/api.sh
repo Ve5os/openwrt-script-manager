@@ -240,6 +240,20 @@ cron_update() {
     fi
 }
 
+cron_remove() {
+    name="$1"
+    ensure_crontab
+    path="$SCRIPT_DIR/$name"
+    tmp="$TMP_BASE.cron-delete"
+    awk -v p="$path" 'index($0,p) == 0 { print }' "$CRONTAB" > "$tmp"
+    mv "$tmp" "$CRONTAB"
+    if /etc/init.d/cron reload >/dev/null 2>&1; then
+        :
+    else
+        /etc/init.d/cron restart >/dev/null 2>&1 || true
+    fi
+}
+
 list_scripts() {
     body="$TMP_BASE.list"
     first=1
@@ -362,7 +376,7 @@ case "$ACTION" in
         [ -f "$path" ] || error_json 404 'Скрипт не найден'
 
         rm -f "$path"
-        cron_update "$name" disable
+        cron_remove "$name"
         respond 200 '{"ok":true}'
         ;;
 

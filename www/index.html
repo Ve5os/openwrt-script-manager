@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Script Manager</title>
-  <link rel="stylesheet" href="style.css?v=2026.11.18.02">
+  <link rel="stylesheet" href="style.css?v=2026.11.18.04">
 </head>
 <body>
   <div class="app">
@@ -45,17 +45,82 @@
         <div class="form-grid">
           <label class="field">
             <span>Имя файла</span>
-            <input id="nameInput" type="text" autocomplete="off" spellcheck="false" placeholder="example.sh">
-          </label>
-          <label class="field">
-            <span>Расписание cron</span>
-            <input id="scheduleInput" type="text" autocomplete="off" spellcheck="false" value="*/1 * * * *">
+            <div class="filename-input">
+              <input id="nameInput" type="text" autocomplete="off" spellcheck="false" placeholder="example">
+              <span>.sh</span>
+            </div>
           </label>
         </div>
 
+        <section class="schedule-card">
+          <div class="schedule-head">
+            <div>
+              <div class="field-title">Расписание</div>
+              <div id="scheduleSummary" class="schedule-summary">Каждую минуту</div>
+            </div>
+            <span class="cron-chip">cron</span>
+          </div>
+
+          <div class="schedule-type-row">
+            <label class="schedule-option">
+              <input type="radio" name="scheduleType" id="scheduleTypeInterval" value="interval" checked>
+              <span>Через интервал</span>
+            </label>
+            <label class="schedule-option">
+              <input type="radio" name="scheduleType" id="scheduleTypeDaily" value="daily">
+              <span>Каждый день</span>
+            </label>
+            <label class="schedule-option">
+              <input type="radio" name="scheduleType" id="scheduleTypeWeekly" value="weekly">
+              <span>По дням недели</span>
+            </label>
+          </div>
+
+          <div id="intervalSettings" class="schedule-settings">
+            <div class="inline-controls">
+              <span>Каждые</span>
+              <input id="intervalValue" class="small-input" type="number" min="1" value="1">
+              <select id="intervalUnit" class="select-input">
+                <option value="minute">минуты</option>
+                <option value="hour">часы</option>
+                <option value="day">дни</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="dailySettings" class="schedule-settings hidden">
+            <div class="inline-controls">
+              <span>Каждый день в</span>
+              <input id="dailyTime" class="time-input" type="time" value="00:00">
+            </div>
+          </div>
+
+          <div id="weeklySettings" class="schedule-settings hidden">
+            <div class="day-grid">
+              <label class="day-option"><input type="checkbox" value="1" checked><span>Пн</span></label>
+              <label class="day-option"><input type="checkbox" value="2"><span>Вт</span></label>
+              <label class="day-option"><input type="checkbox" value="3"><span>Ср</span></label>
+              <label class="day-option"><input type="checkbox" value="4"><span>Чт</span></label>
+              <label class="day-option"><input type="checkbox" value="5"><span>Пт</span></label>
+              <label class="day-option"><input type="checkbox" value="6"><span>Сб</span></label>
+              <label class="day-option"><input type="checkbox" value="0"><span>Вс</span></label>
+            </div>
+            <div class="inline-controls weekly-time">
+              <span>Время</span>
+              <input id="weeklyTime" class="time-input" type="time" value="00:00">
+            </div>
+          </div>
+
+          <div class="schedule-preview">
+            <span>Будет запускаться:</span>
+            <strong id="humanSchedule">каждую минуту</strong>
+          </div>
+        </section>
+
         <label class="field script-field">
           <span>Содержимое</span>
-          <textarea id="contentInput" spellcheck="false" placeholder="#!/bin/sh\necho &quot;Hello, OpenWrt!&quot;"></textarea>
+          <textarea id="contentInput" spellcheck="false" placeholder="#!/bin/sh
+echo &quot;Hello, OpenWrt!&quot;"></textarea>
         </label>
 
         <div id="outputWrap" class="output-wrap hidden">
@@ -84,9 +149,9 @@
   <div id="toast" class="toast"></div>
   <footer class="app-footer">
     <span>OpenWrt Script Manager</span>
-    <span class="build-version">Build 2026.11.18.02</span>
+    <span class="build-version">Build 2026.11.18.04</span>
   </footer>
 
-  <script src="app.js?v=2026.11.18.02"></script>
+  <script src="app.js?v=2026.11.18.04"></script>
 </body>
 </html>
