@@ -2,7 +2,7 @@
 # OpenWrt Script Manager — CGI API.
 # POSIX sh. Пользовательский ввод никогда не передаётся через eval.
 
-set -eu
+set -u
 
 SCRIPT_DIR="/etc/my_scripts"
 CRONTAB="/etc/crontabs/root"
@@ -61,10 +61,8 @@ error_json() {
 
 valid_name() {
     name="$1"
-    case "$name" in
-        ''|*[!a-zA-Z0-9_-]*|*.sh.sh) return 1 ;;
-    esac
-    # Отдельная проверка полного имени.
+    # Разрешаем только имена вида example.sh. Точка допустима только
+    # перед расширением .sh; путь, слеш и прочие символы не проходят.
     printf '%s\n' "$name" | grep -Eq '^[a-zA-Z0-9_-]+\.sh$'
 }
 
@@ -243,8 +241,9 @@ cron_update() {
 }
 
 list_scripts() {
+    body="$TMP_BASE.list"
     first=1
-    printf '{"scripts":['
+    printf '{"scripts":[' > "$body"
     for file in "$SCRIPT_DIR"/*.sh; do
         [ -f "$file" ] || continue
         name="${file##*/}"
@@ -256,14 +255,14 @@ list_scripts() {
         [ -n "$s" ] && schedule="$s"
         if cron_enabled_for "$name"; then enabled=true; fi
 
-        [ "$first" -eq 1 ] || printf ','
+        [ "$first" -eq 1 ] || printf ',' >> "$body"
         first=0
         ename="$(printf '%s' "$name" | json_escape)"
         eschedule="$(printf '%s' "$schedule" | json_escape)"
-        printf '{"name":"%s","enabled":%s,"schedule":"%s"}' "$ename" "$enabled" "$eschedule"
+        printf '{"name":"%s","enabled":%s,"schedule":"%s"}' "$ename" "$enabled" "$eschedule" >> "$body"
     done
-    printf ']}\n'
-    exit 0
+    printf ']}\n' >> "$body"
+    respond 200 "$(cat "$body")"
 }
 
 ACTION=''
