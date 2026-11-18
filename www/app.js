@@ -144,7 +144,7 @@ async function toggleScript() {
   if (!state.current) return;
   const enabled = $('enabledToggle').checked;
   try {
-    await api('toggle', { name: state.current, enabled });
+    await api('toggle', { name: state.current, enabled, schedule: $('scheduleInput').value.trim() || '*/1 * * * *' });
     updateStatus(enabled);
     await refreshList();
     showToast(enabled ? 'Скрипт включён в cron' : 'Скрипт отключён');
@@ -161,7 +161,7 @@ async function runScript() {
   $('runBtn').textContent = '⏳ Выполнение...';
   try {
     const result = await api('run', { name: state.current });
-    $('output').textContent = result.output || '(нет вывода)';
+    $('output').textContent = `${result.output || '(нет вывода)'}\n\n[Код завершения: ${result.exit_code ?? 0}]`;
     $('outputWrap').classList.remove('hidden');
   } catch (error) {
     showToast(error.message, true);
