@@ -1,176 +1,105 @@
 <!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Script Manager</title>
-  <link rel="stylesheet" href="style.css?v=2026.11.19.05">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Script Manager</title>
+<link rel="stylesheet" href="style.css?v=2026.11.19.11">
 </head>
 <body>
-  <div class="app">
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-mark">&gt;_</div>
-        <div class="brand-info">
-          <div class="brand-title">Script Manager</div>
-          <div class="brand-subtitle">Build <span id="buildVersion">2026.11.19.07</span></div>
-        </div>
-        <button id="updateCheckBtn" class="update-check-btn" type="button" title="Проверить обновления">↻</button>
-      </div>
-      <div id="updateNotice" class="update-notice hidden">
-        <div class="update-notice-text">
-          <strong>Доступна новая сборка</strong>
-          <span id="updateVersionText"></span>
-        </div>
-        <button id="updateBtn" class="update-btn" type="button">Обновить</button>
-      </div>
-      <div class="sidebar-head">
-        <span>Скрипты</span>
-        <button id="newBtn" class="icon-btn" title="Новый скрипт">＋</button>
-      </div>
-      <div id="scriptList" class="script-list"></div>
-      <div id="emptyList" class="empty-list hidden">Скриптов пока нет</div>
-    </aside>
+<div class="app">
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-mark">&gt;_</div>
+    <div class="brand-info">
+      <div class="brand-title">Script Manager</div>
+      <div class="brand-subtitle">Build <span id="buildVersion">2026.11.19.11</span></div>
+    </div>
+    <button id="updateCheckBtn" class="update-check-btn" title="Проверить обновления">↻</button>
+  </div>
+  <div id="updateNotice" class="update-notice hidden">
+    <div class="update-notice-text"><strong>Доступна новая сборка</strong><span id="updateVersionText"></span></div>
+    <button id="updateBtn" class="update-btn">Обновить</button>
+  </div>
+  <div class="sidebar-head"><span>Скрипты</span><button id="newBtn" class="icon-btn">＋</button></div>
+  <div id="scriptList" class="script-list"></div>
+  <div id="emptyList" class="empty-list hidden">Скриптов пока нет</div>
+</aside>
 
-    <main class="main">
-      <div id="editorEmpty" class="editor-empty">
-        <div class="empty-icon">⌘</div>
-        <h1>Выберите скрипт</h1>
-        <p>Или создайте новый через кнопку «＋».</p>
-      </div>
-
-      <section id="editor" class="editor hidden">
-        <header class="editor-header">
-          <div>
-            <div class="eyebrow">Пользовательский скрипт</div>
-            <h1 id="editorTitle">Новый скрипт</h1>
-          </div>
-          <div id="statusBadge" class="status-badge off">Выкл.</div>
-        </header>
-
-        <div class="form-grid">
-          <label class="field">
-            <span>Имя файла</span>
-            <div class="filename-input">
-              <input id="nameInput" type="text" autocomplete="off" spellcheck="false" placeholder="example">
-              <span>.sh</span>
-            </div>
-          </label>
-        </div>
-
-        <section class="schedule-card">
-          <div class="schedule-head">
-            <div>
-              <div class="field-title">Расписание</div>
-              <div id="scheduleSummary" class="schedule-summary">Каждую минуту</div>
-            </div>
-            <span class="cron-chip">cron</span>
-          </div>
-
-          <div class="schedule-type-row">
-            <label class="schedule-option">
-              <input type="radio" name="scheduleType" id="scheduleTypeStartup" value="startup" checked>
-              <span>При запуске OpenWrt</span>
-            </label>
-            <label class="schedule-option">
-              <input type="radio" name="scheduleType" id="scheduleTypeManual" value="manual">
-              <span>Ручной cron</span>
-            </label>
-            <label class="schedule-option">
-              <input type="radio" name="scheduleType" id="scheduleTypeInterval" value="interval">
-              <span>Через интервал</span>
-            </label>
-            <label class="schedule-option">
-              <input type="radio" name="scheduleType" id="scheduleTypeDaily" value="daily">
-              <span>Каждый день</span>
-            </label>
-            <label class="schedule-option">
-              <input type="radio" name="scheduleType" id="scheduleTypeWeekly" value="weekly">
-              <span>По дням недели</span>
-            </label>
-          </div>
-
-          <div id="startupSettings" class="schedule-settings">
-            <div class="inline-controls">
-              <span>Скрипт запускается один раз при старте OpenWrt</span>
-            </div>
-          </div>
-
-          <div id="manualSettings" class="schedule-settings hidden">
-            <div class="manual-cron-wrap">
-              <span class="manual-cron-label">Cron</span>
-              <input id="manualCron" class="manual-cron-input" type="text" value="* * * * *" spellcheck="false" autocomplete="off">
-              <span class="manual-cron-help">Введите выражение cron вручную</span>
-            </div>
-          </div>
-
-          <div id="intervalSettings" class="schedule-settings hidden">
-            <div class="inline-controls">
-              <span>Каждые</span>
-              <input id="intervalValue" class="small-input" type="number" min="1" value="1">
-              <select id="intervalUnit" class="select-input">
-                <option value="minute">минуты</option>
-                <option value="hour">часы</option>
-                <option value="day">дни</option>
-              </select>
-            </div>
-          </div>
-
-          <div id="dailySettings" class="schedule-settings hidden">
-            <div class="inline-controls">
-              <span>Каждый день в</span>
-              <input id="dailyTime" class="time-input" type="time" value="00:00">
-            </div>
-          </div>
-
-          <div id="weeklySettings" class="schedule-settings hidden">
-            <div class="day-grid">
-              <label class="day-option"><input type="checkbox" value="1" checked><span>Пн</span></label>
-              <label class="day-option"><input type="checkbox" value="2"><span>Вт</span></label>
-              <label class="day-option"><input type="checkbox" value="3"><span>Ср</span></label>
-              <label class="day-option"><input type="checkbox" value="4"><span>Чт</span></label>
-              <label class="day-option"><input type="checkbox" value="5"><span>Пт</span></label>
-              <label class="day-option"><input type="checkbox" value="6"><span>Сб</span></label>
-              <label class="day-option"><input type="checkbox" value="0"><span>Вс</span></label>
-            </div>
-            <div class="inline-controls weekly-time">
-              <span>Время</span>
-              <input id="weeklyTime" class="time-input" type="time" value="00:00">
-            </div>
-          </div>
-
-          <div class="schedule-preview">
-            <span>Будет запускаться:</span>
-            <strong id="humanSchedule">при запуске OpenWrt</strong>
-          </div>
-        </section>
-
-        <label class="field script-field">
-          <span>Содержимое</span>
-          <textarea id="contentInput" spellcheck="false" placeholder="#!/bin/sh
-echo &quot;Hello, OpenWrt!&quot;"></textarea>
-        </label>
-
-        <div id="outputWrap" class="output-wrap hidden">
-          <div class="output-head"><span>Результат выполнения</span><button id="clearOutputBtn" class="text-btn">Очистить</button></div>
-          <pre id="output"></pre>
-        </div>
-
-        <footer class="actions">
-          <div class="actions-left">
-            <button id="saveBtn" class="btn primary">Сохранить</button>
-            <button id="runBtn" class="btn secondary">▶ Выполнить сейчас</button>
-          </div>
-          <div class="actions-right">
-<button id="deleteBtn" class="btn danger">Удалить</button>
-          </div>
-        </footer>
-      </section>
-    </main>
+<main class="main">
+  <div id="editorEmpty" class="editor-empty">
+    <div class="empty-icon">⌘</div><h1>Выберите скрипт</h1><p>Или создайте новый через кнопку «＋».</p>
   </div>
 
-  <div id="toast" class="toast"></div>
+  <section id="editor" class="editor hidden">
+    <header class="editor-header">
+      <div><div class="eyebrow">Пользовательский скрипт</div><h1 id="editorTitle">Новый скрипт</h1></div>
+      <div id="statusBadge" class="status-badge off">Выкл.</div>
+    </header>
 
-  <script src="app.js?v=2026.11.19.07"></script>
+    <label class="field"><span>Имя файла</span>
+      <div class="filename-input"><input id="nameInput" placeholder="example" autocomplete="off" spellcheck="false"><span>.sh</span></div>
+    </label>
+
+    <section class="schedule-card">
+      <div class="schedule-head">
+        <div><div class="field-title">Расписание</div><div id="scheduleSummary" class="schedule-summary">при запуске OpenWrt</div></div>
+        <span class="cron-chip">cron</span>
+      </div>
+
+      <div class="schedule-type-row">
+        <label class="schedule-option"><input type="radio" name="scheduleType" value="startup" checked><span>При запуске OpenWrt</span></label>
+        <label class="schedule-option"><input type="radio" name="scheduleType" value="manual"><span>Ручной cron</span></label>
+        <label class="schedule-option"><input type="radio" name="scheduleType" value="interval"><span>Через интервал</span></label>
+        <label class="schedule-option"><input type="radio" name="scheduleType" value="daily"><span>Каждый день</span></label>
+        <label class="schedule-option"><input type="radio" name="scheduleType" value="weekly"><span>По дням недели</span></label>
+      </div>
+
+      <div id="startupSettings" class="schedule-settings">
+        <div class="schedule-description">Скрипт запускается автоматически один раз после запуска OpenWrt.</div>
+      </div>
+
+      <div id="manualSettings" class="schedule-settings hidden">
+        <div class="manual-cron-wrap"><span class="manual-cron-label">Cron</span><input id="manualCron" class="manual-cron-input" value="* * * * *" spellcheck="false"></div>
+        <div class="schedule-description">Ручной режим нужен, когда стандартных вариантов расписания недостаточно. Здесь можно указать любое допустимое cron-выражение BusyBox cron. Например: <code>*/15 * * * *</code> — запуск каждые 15 минут.</div>
+      </div>
+
+      <div id="intervalSettings" class="schedule-settings hidden">
+        <div class="inline-controls"><span>Каждые</span><input id="intervalValue" class="small-input" type="number" min="1" value="1"><select id="intervalUnit" class="select-input"><option value="minute">минуты</option><option value="hour">часы</option><option value="day">дни</option></select></div>
+      </div>
+
+      <div id="dailySettings" class="schedule-settings hidden">
+        <div class="inline-controls"><span>Каждый день в</span><input id="dailyTime" class="time-input" type="time" value="00:00"></div>
+      </div>
+
+      <div id="weeklySettings" class="schedule-settings hidden">
+        <div class="day-grid">
+          <label class="day-option"><input type="checkbox" value="1" checked><span>Пн</span></label>
+          <label class="day-option"><input type="checkbox" value="2"><span>Вт</span></label>
+          <label class="day-option"><input type="checkbox" value="3"><span>Ср</span></label>
+          <label class="day-option"><input type="checkbox" value="4"><span>Чт</span></label>
+          <label class="day-option"><input type="checkbox" value="5"><span>Пт</span></label>
+          <label class="day-option"><input type="checkbox" value="6"><span>Сб</span></label>
+          <label class="day-option"><input type="checkbox" value="0"><span>Вс</span></label>
+        </div>
+        <div class="inline-controls weekly-time"><span>Время</span><input id="weeklyTime" class="time-input" type="time" value="00:00"></div>
+      </div>
+
+      <div class="schedule-preview"><span>Будет запускаться:</span><strong id="humanSchedule">при запуске OpenWrt</strong></div>
+    </section>
+
+    <label class="field script-field"><span>Содержимое</span><textarea id="contentInput" spellcheck="false" placeholder="#!/bin/sh&#10;echo &quot;Hello, OpenWrt!&quot;"></textarea></label>
+
+    <div id="outputWrap" class="output-wrap hidden"><div class="output-head"><span>Результат выполнения</span><button id="clearOutputBtn" class="text-btn">Очистить</button></div><pre id="output"></pre></div>
+
+    <footer class="actions">
+      <div class="actions-left"><button id="saveBtn" class="btn primary">Сохранить</button><button id="runBtn" class="btn secondary">▶ Выполнить сейчас</button></div>
+      <button id="deleteBtn" class="btn danger">Удалить</button>
+    </footer>
+  </section>
+</main>
+</div>
+<div id="toast" class="toast"></div>
+<script src="app.js?v=2026.11.19.11"></script>
 </body>
 </html>
