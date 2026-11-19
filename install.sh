@@ -5,7 +5,7 @@
 set -eu
 
 REPO_BASE="https://raw.githubusercontent.com/Ve5os/openwrt-script-manager/main"
-BUILD_VERSION="2026.11.19.04"
+BUILD_VERSION="2026.11.19.05"
 TMP_DIR="/tmp/openwrt-script-manager-install.$$"
 WEB_ROOT="/www-script-manager"
 SCRIPT_DIR="/etc/my_scripts"

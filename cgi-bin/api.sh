@@ -5,7 +5,7 @@
 set -u
 
 SCRIPT_DIR="/etc/my_scripts"
-BUILD_VERSION="2026.11.19.04"
+BUILD_VERSION="2026.11.19.05"
 REPO_BASE="https://raw.githubusercontent.com/Ve5os/openwrt-script-manager/main"
 REPO_INSTALL="$REPO_BASE/install.sh"
 CRONTAB="/etc/crontabs/root"
@@ -224,7 +224,26 @@ fetch_remote_install() {
 }
 remote_version() {
     file="$1"
-    sed -n 's/^[[:space:]]*BUILD_VERSION="\([0-9][0-9.]*\)"[[:space:]]*$/\1/p' "$file" | head -n 1
+    awk '
+        /^[[:space:]]*BUILD_VERSION[[:space:]]*=/ {
+            line=$0
+            sub(/^[[:space:]]*BUILD_VERSION[[:space:]]*=[[:space:]]*/, "", line)
+            gsub(/^["\047]|["\047][[:space:]]*$/, "", line)
+            if (line ~ /^[0-9][0-9.]*$/) { print line; exit }
+        }
+    ' "$file" | head -n 1
+}
+fetch_remote_version() {
+    out="$1"
+    if wget -q -O "$out" "$REPO_BASE/version"; then
+        tr -d '\r\n ' < "$out"
+        return 0
+    fi
+    if command -v curl >/dev/null 2>&1 && curl -fsSL -o "$out" "$REPO_BASE/version"; then
+        tr -d '\r\n ' < "$out"
+        return 0
+    fi
+    return 1
 }
 list_scripts() {
     body="$TMP_BASE.list"
@@ -256,11 +275,20 @@ else
 fi
 case "$ACTION" in
     version_check)
-        tmp="$TMP_BASE.install-check"
-        if ! fetch_remote_install "$tmp"; then
-            error_json 503 'Не удалось связаться с GitHub'
+        version_tmp="$TMP_BASE.version-check"
+        latest=''
+        if latest="$(fetch_remote_version "$version_tmp" 2>/dev/null || true)"; then
+            case "$latest" in
+                ''|*[!0-9.]*|.*|*.) latest='' ;;
+            esac
         fi
-        latest="$(remote_version "$tmp")"
+        if [ -z "$latest" ]; then
+            tmp="$TMP_BASE.install-check"
+            if ! fetch_remote_install "$tmp"; then
+                error_json 503 'Не удалось связаться с GitHub'
+            fi
+            latest="$(remote_version "$tmp")"
+        fi
         [ -n "$latest" ] || error_json 500 'Не удалось определить версию на GitHub'
         if version_gt "$latest" "$BUILD_VERSION"; then
             respond 200 "{\"current_version\":\"$BUILD_VERSION\",\"latest_version\":\"$latest\",\"update_available\":true}"
