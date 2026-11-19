@@ -232,27 +232,6 @@ function cronFromUi() {
   return `${minute} ${hour} * * ${days.join(',')}`;
 }
 
-function humanSchedule() {
-  const type = $('scheduleType')?.value || 'manual';
-
-  switch (type) {
-    case 'boot':
-      return 'При загрузке OpenWrt скрипт будет выполнен один раз после запуска системы.';
-    case 'reboot':
-      return 'При каждой перезагрузке OpenWrt скрипт будет выполнен один раз после запуска системы.';
-    case 'once':
-      return 'Скрипт будет выполнен один раз в указанную дату и время.';
-    case 'interval':
-      return 'Скрипт будет запускаться автоматически через заданный промежуток времени.';
-    case 'cron':
-      return 'Скрипт будет запускаться автоматически по заданному расписанию.';
-    case 'manual':
-      return 'Скрипт не запускается автоматически — его можно выполнить вручную.';
-    default:
-      return 'Скрипт будет запускаться автоматически по заданному расписанию.';
-  }
-}
-
 function updateScheduleUi() {
   const type = document.querySelector('input[name="scheduleType"]:checked').value;
   $('startupSettings').classList.toggle('hidden', type !== 'startup');
@@ -260,10 +239,6 @@ function updateScheduleUi() {
   $('intervalSettings').classList.toggle('hidden', type !== 'interval');
   $('dailySettings').classList.toggle('hidden', type !== 'daily');
   $('weeklySettings').classList.toggle('hidden', type !== 'weekly');
-  const scheduleText = humanSchedule();
-  const human = $('humanSchedule');
-  if (human) human.textContent = scheduleText;
-  if (summary) summary.textContent = scheduleText;
 }
 
 function parseCronToUi(schedule) {
