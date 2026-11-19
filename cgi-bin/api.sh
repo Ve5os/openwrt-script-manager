@@ -5,7 +5,7 @@
 set -u
 
 SCRIPT_DIR="/etc/my_scripts"
-BUILD_VERSION="2026.11.19.02"
+BUILD_VERSION="2026.11.19.03"
 REPO_BASE="https://raw.githubusercontent.com/Ve5os/openwrt-script-manager/main"
 REPO_INSTALL="$REPO_BASE/install.sh"
 CRONTAB="/etc/crontabs/root"
@@ -33,7 +33,7 @@ json_escape() {
     {
         if (NR > 1) printf "\\n";
         gsub(/\\/, "\\\\");
-        gsub(/"/, "\\"");
+        gsub(/"/, "\\\"");
         gsub(/\r/, "\\r");
         gsub(/\t/, "\\t");
         printf "%s", $0;
@@ -52,7 +52,7 @@ error_json() {
     code="$1"
     message="$2"
     escaped="$(printf '%s' "$message" | json_escape)"
-    respond "$code" "{"error":"$escaped"}"
+    respond "$code" "{\"error\":\"$escaped\"}"
 }
 valid_name() {
     name="$1"
@@ -309,7 +309,7 @@ EOF
         ename="$(printf '%s' "$name" | json_escape)"
         econtent="$(printf '%s' "$content" | json_escape)"
         eschedule="$(printf '%s' "$schedule" | json_escape)"
-        respond 200 "{"name":"$ename","content":"$econtent","enabled":$enabled,"schedule":"$eschedule"}"
+        respond 200 "{\"name\":\"$ename\",\"content\":\"$econtent\",\"enabled\":$enabled,\"schedule\":\"$eschedule\"}"
         ;;
     save)
         [ "${REQUEST_METHOD:-GET}" = 'POST' ] || error_json 400 'save доступен только через POST'
@@ -351,7 +351,7 @@ EOF
         output="$("$path" 2>&1)"
         rc=$?
         escaped="$(printf '%s' "$output" | json_escape)"
-        respond 200 "{"ok":true,"output":"$escaped","exit_code":$rc}"
+        respond 200 "{\"ok\":true,\"output\":\"$escaped\",\"exit_code\":$rc}"
         ;;
     delete)
         [ "${REQUEST_METHOD:-GET}" = 'POST' ] || error_json 400 'delete доступен только через POST'

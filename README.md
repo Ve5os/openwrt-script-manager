@@ -1,6 +1,6 @@
 # OpenWrt Script Manager
 
-Build: 2026.11.19.02
+Build: 2026.11.19.03
 
 ## Новое
 
