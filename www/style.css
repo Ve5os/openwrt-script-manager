@@ -11,7 +11,6 @@
   --success: #5bd49a;
   --radius: 16px;
 }
-
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 body {
@@ -23,7 +22,6 @@ body {
 button, input, textarea { font: inherit; }
 button { cursor: pointer; }
 .hidden { display: none !important; }
-
 .app { min-height: 100%; display: flex; }
 .sidebar {
   width: 300px; min-height: 100vh; padding: 22px 16px;
@@ -43,15 +41,28 @@ button { cursor: pointer; }
 .script-list { display: grid; gap: 5px; }
 .script-item {
   width: 100%; border: 1px solid transparent; border-radius: 11px; background: transparent;
-  color: var(--text); text-align: left; padding: 11px 12px; display: flex; align-items: center; gap: 10px;
+  color: var(--text); text-align: left; padding: 8px 10px; display: flex; align-items: center; gap: 10px;
 }
 .script-item:hover { background: #151a20; }
 .script-item.active { background: #171d25; border-color: #29313b; }
 .script-dot { width: 7px; height: 7px; border-radius: 50%; background: #606a76; flex: 0 0 auto; }
 .script-dot.on { background: var(--success); box-shadow: 0 0 9px rgba(91,212,154,.45); }
-.script-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 13px; }
+.script-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 13px; flex: 1 1 auto; min-width: 0; }
+.script-cron-toggle {
+  width: 34px; height: 19px; border-radius: 999px; border: 1px solid #363e48;
+  background: #2a3038; position: relative; flex: 0 0 auto; cursor: pointer;
+  transition: background .15s, border-color .15s, opacity .15s;
+}
+.script-cron-toggle::after {
+  content: ""; position: absolute; width: 13px; height: 13px; top: 2px; left: 2px;
+  border-radius: 50%; background: #929aa4; transition: left .15s, background .15s;
+}
+.script-cron-toggle.on {
+  background: rgba(91,212,154,.25); border-color: rgba(91,212,154,.45);
+}
+.script-cron-toggle.on::after { left: 17px; background: var(--success); }
+.script-cron-toggle.busy { opacity: .5; pointer-events: none; }
 .empty-list { padding: 20px 8px; color: var(--muted); font-size: 13px; }
-
 .main { flex: 1; min-width: 0; display: flex; }
 .editor-empty, .editor { width: min(980px, 100%); margin: auto; padding: 42px 52px; }
 .editor-empty { text-align: center; color: var(--muted); }
@@ -96,25 +107,14 @@ pre { margin: 0; padding: 14px; max-height: 250px; overflow: auto; white-space: 
 .toggle-row input:checked + .toggle { background: rgba(91,212,154,.25); border-color: rgba(91,212,154,.45); }
 .toggle-row input:checked + .toggle::after { left: 19px; background: var(--success); }
 .app-footer {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  padding: 8px 14px;
-  color: #5f6873;
-  font-size: 10px;
-  letter-spacing: .02em;
-  pointer-events: none;
+  position: fixed; left: 0; right: 0; bottom: 0; display: flex;
+  justify-content: center; gap: 8px; padding: 8px 14px; color: #5f6873;
+  font-size: 10px; letter-spacing: .02em; pointer-events: none;
 }
 .build-version { color: #737d88; }
-
 .toast { position: fixed; right: 22px; bottom: 22px; max-width: 360px; padding: 11px 14px; border-radius: 10px; border: 1px solid #303841; background: #171c22; color: var(--text); box-shadow: 0 15px 40px rgba(0,0,0,.35); transform: translateY(15px); opacity: 0; pointer-events: none; transition: .18s; }
 .toast.show { transform: none; opacity: 1; }
 .toast.error { color: #ffd4d7; border-color: rgba(239,107,115,.4); background: #211417; }
-
 @media (max-width: 800px) {
   .app { display: block; }
   .sidebar { width: 100%; min-height: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: 14px; }
@@ -129,7 +129,6 @@ pre { margin: 0; padding: 14px; max-height: 250px; overflow: auto; white-space: 
   .actions-left, .actions-right { justify-content: stretch; }
   .actions-left .btn, .actions-right .btn { flex: 1; }
 }
-
 .filename-input { display: flex; align-items: center; }
 .filename-input input { border-radius: 10px 0 0 10px; }
 .filename-input span { height: 43px; display: flex; align-items: center; padding: 0 12px; color: var(--muted); background: #171c22; border: 1px solid #252c34; border-left: 0; border-radius: 0 10px 10px 0; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }

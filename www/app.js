@@ -1,6 +1,6 @@
 'use strict';
 
-const BUILD_VERSION = '2026.11.18.04';
+const BUILD_VERSION = '2026.11.19.01';
 const state = { scripts: [], current: null, creating: false };
 const $ = (id) => document.getElementById(id);
 
@@ -37,21 +37,69 @@ function displayName(name) {
   return name.endsWith('.sh') ? name.slice(0, -3) : name;
 }
 
+async function toggleListScript(script, control) {
+  const enabled = !script.enabled;
+  control.classList.add('busy');
+  try {
+    await api('toggle', {
+      name: script.name,
+      enabled,
+      schedule: script.schedule || '*/1 * * * *'
+    });
+    script.enabled = enabled;
+    control.classList.toggle('on', enabled);
+    control.setAttribute('aria-checked', String(enabled));
+    control.title = enabled ? 'Отключить cron' : 'Включить cron';
+
+    if (state.current === script.name) {
+      updateStatus(enabled);
+    }
+
+    showToast(enabled ? 'Скрипт включён в cron' : 'Скрипт отключён');
+  } catch (error) {
+    showToast(error.message, true);
+  } finally {
+    control.classList.remove('busy');
+  }
+}
+
 function renderList() {
   const list = $('scriptList');
   list.innerHTML = '';
   $('emptyList').classList.toggle('hidden', state.scripts.length !== 0);
+
   for (const script of state.scripts) {
     const button = document.createElement('button');
     button.className = `script-item${state.current === script.name ? ' active' : ''}`;
     button.type = 'button';
     button.addEventListener('click', () => openScript(script.name));
+
     const dot = document.createElement('span');
     dot.className = `script-dot${script.enabled ? ' on' : ''}`;
+
     const name = document.createElement('span');
     name.className = 'script-name';
     name.textContent = displayName(script.name);
-    button.append(dot, name);
+
+    const cronToggle = document.createElement('span');
+    cronToggle.className = `script-cron-toggle${script.enabled ? ' on' : ''}`;
+    cronToggle.setAttribute('role', 'switch');
+    cronToggle.setAttribute('aria-checked', String(!!script.enabled));
+    cronToggle.title = script.enabled ? 'Отключить cron' : 'Включить cron';
+    cronToggle.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleListScript(script, cronToggle);
+    });
+    cronToggle.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleListScript(script, cronToggle);
+      }
+    });
+
+    button.append(dot, name, cronToggle);
     list.appendChild(button);
   }
 }
@@ -74,17 +122,21 @@ function clearOutput() {
 
 function cronFromUi() {
   const type = document.querySelector('input[name="scheduleType"]:checked').value;
+
   if (type === 'interval') {
     const value = Math.max(1, Number.parseInt($('intervalValue').value, 10) || 1);
     const unit = $('intervalUnit').value;
+
     if (unit === 'minute') {
       if (value > 59) throw new Error('Для минут можно указать значение от 1 до 59');
       return `*/${value} * * * *`;
     }
+
     if (unit === 'hour') {
       if (value > 23) throw new Error('Для часов можно указать значение от 1 до 23');
       return `0 */${value} * * *`;
     }
+
     if (value > 31) throw new Error('Для дней можно указать значение от 1 до 31');
     return `0 0 */${value} * *`;
   }
@@ -102,6 +154,7 @@ function cronFromUi() {
 
 function humanSchedule() {
   const type = document.querySelector('input[name="scheduleType"]:checked').value;
+
   if (type === 'interval') {
     const value = Math.max(1, Number.parseInt($('intervalValue').value, 10) || 1);
     const unit = $('intervalUnit').value;
@@ -109,8 +162,10 @@ function humanSchedule() {
     if (unit === 'hour') return value === 1 ? 'каждый час' : `каждые ${value} ч.`;
     return value === 1 ? 'каждый день' : `каждые ${value} дн.`;
   }
+
   const time = type === 'daily' ? $('dailyTime').value : $('weeklyTime').value;
   if (type === 'daily') return `каждый день в ${time}`;
+
   const names = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
   const days = [...document.querySelectorAll('#weeklySettings .day-option input:checked')].map((el) => names[Number(el.value)]);
   return `${days.join(', ')} в ${time}`;
@@ -129,8 +184,8 @@ function parseCronToUi(schedule) {
   const value = (schedule || '*/1 * * * *').trim();
   const parts = value.split(/\s+/);
   if (parts.length !== 5) return false;
-
   const [minute, hour, day, month, weekday] = parts;
+
   if (/^\*\/([1-9]\d*)$/.test(minute) && hour === '*' && day === '*' && month === '*' && weekday === '*') {
     $('scheduleTypeInterval').checked = true;
     $('intervalValue').value = RegExp.$1;
@@ -138,6 +193,7 @@ function parseCronToUi(schedule) {
     updateScheduleUi();
     return true;
   }
+
   if (minute === '0' && /^\*\/([1-9]\d*)$/.test(hour) && day === '*' && month === '*' && weekday === '*') {
     $('scheduleTypeInterval').checked = true;
     $('intervalValue').value = RegExp.$1;
@@ -145,6 +201,7 @@ function parseCronToUi(schedule) {
     updateScheduleUi();
     return true;
   }
+
   if (minute === '0' && hour === '0' && /^\*\/([1-9]\d*)$/.test(day) && month === '*' && weekday === '*') {
     $('scheduleTypeInterval').checked = true;
     $('intervalValue').value = RegExp.$1;
@@ -152,12 +209,14 @@ function parseCronToUi(schedule) {
     updateScheduleUi();
     return true;
   }
+
   if (/^\d+$/.test(minute) && /^\d+$/.test(hour) && day === '*' && month === '*' && weekday === '*') {
     $('scheduleTypeDaily').checked = true;
     $('dailyTime').value = `${String(Number(hour)).padStart(2, '0')}:${String(Number(minute)).padStart(2, '0')}`;
     updateScheduleUi();
     return true;
   }
+
   if (/^\d+$/.test(minute) && /^\d+$/.test(hour) && day === '*' && month === '*' && /^[0-6](,[0-6])*$/.test(weekday)) {
     $('scheduleTypeWeekly').checked = true;
     document.querySelectorAll('#weeklySettings .day-option input').forEach((el) => { el.checked = false; });
@@ -169,6 +228,7 @@ function parseCronToUi(schedule) {
     updateScheduleUi();
     return true;
   }
+
   return false;
 }
 
@@ -187,6 +247,7 @@ async function refreshList(selectCurrent = true) {
   const result = await apiGet('list');
   state.scripts = result.scripts || [];
   renderList();
+
   if (selectCurrent && state.current && state.scripts.some(s => s.name === state.current)) {
     updateStatus(state.scripts.find(s => s.name === state.current).enabled);
   }
@@ -206,7 +267,9 @@ async function openScript(name) {
     clearOutput();
     setEditorVisible(true);
     renderList();
-  } catch (error) { showToast(error.message, true); }
+  } catch (error) {
+    showToast(error.message, true);
+  }
 }
 
 function newScript() {
@@ -232,11 +295,19 @@ async function saveScript() {
   const name = rawName.endsWith('.sh') ? rawName : `${rawName}.sh`;
   const content = $('contentInput').value;
   let schedule;
+
   if (!/^[a-zA-Z0-9_-]+$/.test(rawName.replace(/\.sh$/, ''))) {
     showToast('Имя может содержать только латинские буквы, цифры, _ и -', true);
     return;
   }
-  try { schedule = cronFromUi(); } catch (error) { showToast(error.message, true); return; }
+
+  try {
+    schedule = cronFromUi();
+  } catch (error) {
+    showToast(error.message, true);
+    return;
+  }
+
   try {
     await api('save', { name, content, schedule });
     state.current = name;
@@ -245,14 +316,24 @@ async function saveScript() {
     $('editorTitle').textContent = displayName(name);
     showToast('Скрипт сохранён');
     await refreshList();
-  } catch (error) { showToast(error.message, true); }
+  } catch (error) {
+    showToast(error.message, true);
+  }
 }
 
 async function toggleScript() {
   if (!state.current) return;
   const enabled = $('enabledToggle').checked;
   let schedule;
-  try { schedule = cronFromUi(); } catch (error) { $('enabledToggle').checked = !enabled; showToast(error.message, true); return; }
+
+  try {
+    schedule = cronFromUi();
+  } catch (error) {
+    $('enabledToggle').checked = !enabled;
+    showToast(error.message, true);
+    return;
+  }
+
   try {
     await api('toggle', { name: state.current, enabled, schedule });
     updateStatus(enabled);
@@ -269,17 +350,23 @@ async function runScript() {
   clearOutput();
   $('runBtn').disabled = true;
   $('runBtn').textContent = '⏳ Выполнение...';
+
   try {
     const result = await api('run', { name: state.current });
     $('output').textContent = `${result.output || '(нет вывода)'}\n\n[Код завершения: ${result.exit_code ?? 0}]`;
     $('outputWrap').classList.remove('hidden');
-  } catch (error) { showToast(error.message, true); }
-  finally { $('runBtn').disabled = false; $('runBtn').textContent = '▶ Выполнить сейчас'; }
+  } catch (error) {
+    showToast(error.message, true);
+  } finally {
+    $('runBtn').disabled = false;
+    $('runBtn').textContent = '▶ Выполнить сейчас';
+  }
 }
 
 async function deleteScript() {
   if (!state.current) return;
   if (!window.confirm(`Удалить ${displayName(state.current)}?`)) return;
+
   try {
     await api('delete', { name: state.current });
     state.current = null;
@@ -287,7 +374,9 @@ async function deleteScript() {
     setEditorVisible(false);
     await refreshList(false);
     showToast('Скрипт удалён');
-  } catch (error) { showToast(error.message, true); }
+  } catch (error) {
+    showToast(error.message, true);
+  }
 }
 
 $('newBtn').addEventListener('click', newScript);
@@ -307,5 +396,7 @@ document.querySelectorAll('#weeklySettings .day-option input').forEach((el) => e
   try {
     await refreshList(false);
     updateScheduleUi();
-  } catch (error) { showToast(error.message, true); }
+  } catch (error) {
+    showToast(error.message, true);
+  }
 })();

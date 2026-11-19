@@ -5,7 +5,7 @@
 set -eu
 
 REPO_BASE="https://raw.githubusercontent.com/Ve5os/openwrt-script-manager/main"
-BUILD_VERSION="2026.11.18.04"
+BUILD_VERSION="2026.11.19.01"
 TMP_DIR="/tmp/openwrt-script-manager-install.$$"
 WEB_ROOT="/www-script-manager"
 SCRIPT_DIR="/etc/my_scripts"
@@ -43,14 +43,12 @@ log "Создаю каталоги"
 mkdir -p "$WEB_ROOT/cgi-bin" "$SCRIPT_DIR"
 
 log "Устанавливаю файлы интерфейса и CGI"
-# Пользовательские скрипты здесь намеренно не удаляются и не перезаписываются.
 cp "$TMP_DIR/www/index.html" "$WEB_ROOT/index.html"
 cp "$TMP_DIR/www/style.css" "$WEB_ROOT/style.css"
 cp "$TMP_DIR/www/app.js" "$WEB_ROOT/app.js"
 cp "$TMP_DIR/cgi-bin/api.sh" "$WEB_ROOT/cgi-bin/api.sh"
 chmod 0755 "$WEB_ROOT/cgi-bin/api.sh"
 
-# Проверяем наличие отдельного экземпляра uhttpd по имени секции.
 if ! uci -q get uhttpd.script_manager >/dev/null 2>&1; then
     log "Добавляю экземпляр uhttpd на порту 9696"
     sid="$(uci add uhttpd uhttpd)"
@@ -69,7 +67,6 @@ else
     uci set uhttpd.script_manager.error_page='/index.html'
 fi
 
-# Добавляем привязку авторизации только если её ещё нет.
 auth_ref=''
 if uci -q get uhttpd.script_manager.httpauth >/dev/null 2>&1; then
     auth_ref="$(uci -q get uhttpd.script_manager.httpauth || true)"
