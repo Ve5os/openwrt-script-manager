@@ -232,6 +232,27 @@ function cronFromUi() {
   return `${minute} ${hour} * * ${days.join(',')}`;
 }
 
+function humanSchedule() {
+  const type = $('scheduleType')?.value || 'manual';
+
+  switch (type) {
+    case 'boot':
+      return 'При загрузке OpenWrt скрипт будет выполнен один раз после запуска системы.';
+    case 'reboot':
+      return 'При каждой перезагрузке OpenWrt скрипт будет выполнен один раз после запуска системы.';
+    case 'once':
+      return 'Скрипт будет выполнен один раз в указанную дату и время.';
+    case 'interval':
+      return 'Скрипт будет запускаться автоматически через заданный промежуток времени.';
+    case 'cron':
+      return 'Скрипт будет запускаться автоматически по заданному расписанию.';
+    case 'manual':
+      return 'Скрипт не запускается автоматически — его можно выполнить вручную.';
+    default:
+      return 'Скрипт будет запускаться автоматически по заданному расписанию.';
+  }
+}
+
 function updateScheduleUi() {
   const type = document.querySelector('input[name="scheduleType"]:checked').value;
   $('startupSettings').classList.toggle('hidden', type !== 'startup');
@@ -239,6 +260,9 @@ function updateScheduleUi() {
   $('intervalSettings').classList.toggle('hidden', type !== 'interval');
   $('dailySettings').classList.toggle('hidden', type !== 'daily');
   $('weeklySettings').classList.toggle('hidden', type !== 'weekly');
+  const scheduleText = humanSchedule();
+  const human = $('humanSchedule');
+  if (human) human.textContent = scheduleText;
 }
 
 function parseCronToUi(schedule) {
@@ -430,12 +454,71 @@ async function deleteScript() {
   }
 }
 
+function showUninstallDialog() {
+  const existing = $('uninstallModal');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'uninstallModal';
+  modal.className = 'modal-backdrop';
+  modal.innerHTML = `
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="uninstallTitle">
+      <div class="modal-icon">!</div>
+      <h2 id="uninstallTitle">Удалить Script Manager?</h2>
+      <p>Будет полностью удалён OpenWrt Script Manager.</p>
+      <p class="modal-warning">Также будут удалены все скрипты, добавленные через менеджер, и все связанные с ними записи cron. Автозапуск самого менеджера тоже будет удалён.</p>
+      <p class="modal-note">Это действие нельзя отменить.</p>
+      <div class="modal-actions">
+        <button id="cancelUninstallBtn" class="btn secondary" type="button">Отмена</button>
+        <button id="confirmUninstallBtn" class="btn danger" type="button">Удалить всё</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  const close = () => modal.remove();
+  $('cancelUninstallBtn').addEventListener('click', close);
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) close();
+  });
+  $('confirmUninstallBtn').addEventListener('click', uninstallManager);
+}
+
+async function uninstallManager() {
+  const button = $('confirmUninstallBtn');
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Удаление…';
+  }
+
+  try {
+    await api('uninstall', {});
+    document.body.innerHTML = `
+      <div class="uninstall-complete">
+        <div class="uninstall-complete-card">
+          <div class="modal-icon success">✓</div>
+          <h2>Менеджер удаляется</h2>
+          <p>OpenWrt Script Manager, его скрипты и записи cron удаляются.</p>
+          <p class="modal-note">Страница будет недоступна после завершения удаления.</p>
+        </div>
+      </div>
+    `;
+  } catch (error) {
+    if (button) {
+      button.disabled = false;
+      button.textContent = 'Удалить всё';
+    }
+    showToast(error.message || 'Ошибка удаления', true);
+  }
+}
+
 $('updateCheckBtn').addEventListener('click', () => checkForUpdate(true));
 $('updateBtn').addEventListener('click', installUpdate);
 $('newBtn').addEventListener('click', newScript);
 $('saveBtn').addEventListener('click', saveScript);
 $('runBtn').addEventListener('click', runScript);
 $('deleteBtn').addEventListener('click', deleteScript);
+$('uninstallBtn').addEventListener('click', showUninstallDialog);
 $('clearOutputBtn').addEventListener('click', clearOutput);
 document.querySelectorAll('input[name="scheduleType"]').forEach((el) => el.addEventListener('change', updateScheduleUi));
 $('intervalValue').addEventListener('input', updateScheduleUi);

@@ -296,6 +296,47 @@ case "$ACTION" in
         fi
         respond 200 "{\"current_version\":\"$current\",\"latest_version\":\"$latest\",\"update_available\":false}"
         ;;
+    uninstall)
+        [ "${REQUEST_METHOD:-GET}" = 'POST' ] || error_json 400 'uninstall доступен только через POST'
+
+        # Удаление выполняется в фоне после ответа клиенту: текущий CGI-файл
+        # и uhttpd могут быть удалены/перезапущены только после отправки ответа.
+        uninstall_script="/tmp/openwrt-script-manager-uninstall.sh"
+        cat > "$uninstall_script" <<'EOF_UNINSTALL'
+#!/bin/sh
+sleep 1
+SCRIPT_DIR="/etc/my_scripts"
+CRONTAB="/etc/crontabs/root"
+WEB_ROOT="/www-script-manager"
+
+# Удаляем все cron-записи менеджера: пользовательские записи,
+# ссылающиеся на его каталог скриптов, и его автозапуск uhttpd.
+if [ -f "$CRONTAB" ]; then
+    tmp="/tmp/script-manager-uninstall-cron.$$"
+    awk -v p="$SCRIPT_DIR/" 'index($0,p)==0 && index($0,"# OpenWrt Script Manager autostart")==0 { print }' "$CRONTAB" > "$tmp"
+    mv "$tmp" "$CRONTAB"
+fi
+/etc/init.d/cron reload 2>/dev/null || /etc/init.d/cron restart 2>/dev/null || true
+
+# Удаляем все скрипты менеджера.
+rm -rf "$SCRIPT_DIR"
+
+# Удаляем web-интерфейс и CGI.
+rm -rf "$WEB_ROOT"
+
+# Удаляем отдельный экземпляр uhttpd и его авторизацию,
+# созданные установщиком Script Manager.
+uci -q delete uhttpd.script_manager 2>/dev/null || true
+uci -q delete uhttpd.script_manager_auth 2>/dev/null || true
+uci commit uhttpd 2>/dev/null || true
+/etc/init.d/uhttpd restart 2>/dev/null || true
+
+rm -f "$0"
+EOF_UNINSTALL
+        chmod 0755 "$uninstall_script"
+        nohup /bin/sh "$uninstall_script" >/tmp/openwrt-script-manager-uninstall.log 2>&1 </dev/null &
+        respond 200 '{"ok":true,"uninstall_started":true}'
+        ;;
     update)
         [ "${REQUEST_METHOD:-GET}" = 'POST' ] || error_json 400 'update доступен только через POST'
 

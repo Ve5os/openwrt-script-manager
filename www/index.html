@@ -137,6 +137,11 @@
               <input id="weeklyTime" class="time-input" type="time" value="00:00">
             </div>
           </div>
+
+          <div class="schedule-preview">
+            <span>Будет запускаться:</span>
+            <strong id="humanSchedule">при запуске OpenWrt</strong>
+          </div>
         </section>
 
         <label class="field script-field">
@@ -156,7 +161,8 @@ echo &quot;Hello, OpenWrt!&quot;"></textarea>
             <button id="runBtn" class="btn secondary">▶ Выполнить сейчас</button>
           </div>
           <div class="actions-right">
-<button id="deleteBtn" class="btn danger">Удалить</button>
+            <button id="deleteBtn" class="btn danger">Удалить</button>
+            <button id="uninstallBtn" class="btn manager-uninstall" type="button">Удалить менеджер</button>
           </div>
         </footer>
       </section>
