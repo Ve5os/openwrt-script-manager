@@ -1,7 +1,7 @@
 #!/bin/sh
 set -u
 SCRIPT_DIR="/etc/my_scripts"
-BUILD_VERSION="2026.11.19.09"
+BUILD_VERSION="2026.11.19.10"
 REPO_BASE="https://raw.githubusercontent.com/Ve5os/openwrt-script-manager/main"
 CRONTAB="/etc/crontabs/root"
 TMP="/tmp/script-manager.$$"
@@ -67,7 +67,11 @@ get)
   ;;
 save)
   [ "${REQUEST_METHOD:-GET}" = POST ]||err 400 'save доступен только через POST';n="$(json name '')";c="$(json content '')";s="$(json schedule '@reboot')";valid "$n"||err 400 'Некорректное имя';p="$(path "$n")"||err 400 'Некорректное имя'
-  case "$s" in @reboot) ;; *[!0-9'*/,'-'\ ]*)err 400 'Некорректное cron-расписание';;esac
+  if [ "$s" != "@reboot" ];then
+    oldifs="$IFS";IFS=" ";set -- $s;IFS="$oldifs"
+    [ $# -eq 5 ] || err 400 'Некорректное cron-расписание'
+    for field in "$@";do case "$field" in ""|*[!0-9*/,-]*)err 400 "Некорректное cron-расписание";;esac;done
+  fi
   printf '%s' "$c">$TMP.script;mv "$TMP.script" "$p";chmod 755 "$p";updatecron "$n" replace "$s";respond 200 '{"ok":true}'
   ;;
 run)

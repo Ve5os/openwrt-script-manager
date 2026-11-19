@@ -2,6 +2,7 @@
 set -eu
 REPO="Ve5os/openwrt-script-manager"
 BRANCH="main"
+BUILD_VERSION="2026.11.19.10"
 ARCHIVE_URL="https://github.com/$REPO/archive/refs/heads/$BRANCH.tar.gz"
 BASE="/etc/openwrt-script-manager"
 WEB="/www-script-manager"
@@ -10,19 +11,31 @@ TMP="/tmp/openwrt-script-manager-install.$$"
 cleanup(){ rm -rf "$TMP"; }
 trap cleanup EXIT INT TERM
 mkdir -p "$TMP"
-echo "==> Downloading OpenWrt Script Manager from GitHub..."
+echo "==> OpenWrt Script Manager installer"
+echo "    Version: $BUILD_VERSION"
+echo "    Repository: https://github.com/$REPO"
+echo "    Branch: $BRANCH"
+echo "==> Downloading repository..."
 if command -v wget >/dev/null 2>&1;then wget -qO "$TMP/repo.tar.gz" "$ARCHIVE_URL";elif command -v uclient-fetch >/dev/null 2>&1;then uclient-fetch -qO "$TMP/repo.tar.gz" "$ARCHIVE_URL";else echo "ERROR: wget or uclient-fetch is required.";exit 1;fi
 tar -xzf "$TMP/repo.tar.gz" -C "$TMP"
-ROOT="$(find "$TMP" -maxdepth 2 -type f -name README.md -print 2>/dev/null|head -n1|sed 's#/README.md$##')"
+ROOT="$(find "$TMP" -maxdepth 3 -type f -path '*/www/index.html' -print 2>/dev/null|head -n1|sed 's#/www/index.html$##')"
 [ -n "$ROOT" ]||{ echo "ERROR: repository not found.";exit 1; }
-for f in www/index.html www/app.js www/style.css cgi-bin/api.sh;do [ -f "$ROOT/$f" ]||{ echo "ERROR: missing $f";exit 1;};done
-mkdir -p "$BASE/scripts" "$BASE/logs" "$BASE/sessions" "$WEB/cgi-bin"
+echo "==> Checking downloaded files..."
+for f in www/index.html www/app.js www/style.css cgi-bin/api.sh version;do [ -f "$ROOT/$f" ] || { echo "ERROR: missing $f"; exit 1; };done
+echo "    Web UI: OK"
+echo "    API: OK"
+echo "    Version file: $(cat "$ROOT/version" 2>/dev/null || echo unknown)"
+echo "==> Installing files..."
+echo "==> Preparing directories..."
+mkdir -p "$BASE/scripts" "$BASE/logs" "$BASE/sessions" "$WEB/cgi-bin" /etc/my_scripts
 cp "$ROOT/www/index.html" "$WEB/index.html"
 cp "$ROOT/www/app.js" "$WEB/app.js"
 cp "$ROOT/www/style.css" "$WEB/style.css"
 cp "$ROOT/cgi-bin/api.sh" "$WEB/cgi-bin/api.sh"
 chmod 644 "$WEB/index.html" "$WEB/app.js" "$WEB/style.css"
 chmod 755 "$WEB/cgi-bin/api.sh"
+echo "    Web files installed: index.html, app.js, style.css"
+echo "    CGI API installed: $WEB/cgi-bin/api.sh"
 touch "$BASE/config" "$BASE/users"
 chmod 600 "$BASE/config" "$BASE/users"
 mkdir -p /etc/crontabs;touch /etc/crontabs/root;chmod 600 /etc/crontabs/root
@@ -32,9 +45,17 @@ uci set uhttpd.script_manager.home="$WEB"
 uci set uhttpd.script_manager.cgi_prefix='/cgi-bin'
 uci set uhttpd.script_manager.index_page='index.html'
 uci set uhttpd.script_manager.error_page='/index.html'
+echo "==> Applying uhttpd configuration..."
 uci commit uhttpd
 /etc/init.d/uhttpd restart
+echo ""
 echo "=============================================="
-echo "OpenWrt Script Manager — build 2026.11.19.09"
-echo "Open: http://ROUTER_IP:9696"
+echo " OpenWrt Script Manager — build $BUILD_VERSION"
+echo "=============================================="
+echo " Web interface: http://ROUTER_IP:9696"
+echo " Install path:  $WEB"
+echo " Config path:   $BASE"
+echo " Scripts path:  /etc/my_scripts"
+echo " CGI API:       $WEB/cgi-bin/api.sh"
+echo " Status:        installation completed successfully"
 echo "=============================================="
