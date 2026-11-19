@@ -5,7 +5,6 @@
 set -eu
 
 REPO_BASE="https://raw.githubusercontent.com/Ve5os/openwrt-script-manager/main"
-BUILD_VERSION=""
 TMP_DIR="/tmp/openwrt-script-manager-install.$$"
 WEB_ROOT="/www-script-manager"
 SCRIPT_DIR="/etc/my_scripts"
@@ -38,7 +37,6 @@ fetch "$REPO_BASE/www/style.css" "$TMP_DIR/www/style.css"
 fetch "$REPO_BASE/www/app.js" "$TMP_DIR/www/app.js"
 fetch "$REPO_BASE/cgi-bin/api.sh" "$TMP_DIR/cgi-bin/api.sh"
 fetch "$REPO_BASE/version" "$TMP_DIR/version"
-BUILD_VERSION="$(tr -d '\r\n ' < "$TMP_DIR/version")"
 case "$BUILD_VERSION" in
     ''|*[!0-9.]*|.*|*.) fail "Некорректная версия в $REPO_BASE/version: $BUILD_VERSION" ;;
 esac
