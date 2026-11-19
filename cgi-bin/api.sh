@@ -5,7 +5,7 @@
 set -u
 
 SCRIPT_DIR="/etc/my_scripts"
-BUILD_VERSION="2026.11.19.06"
+BUILD_VERSION="2026.11.19.07"
 REPO_BASE="https://raw.githubusercontent.com/Ve5os/openwrt-script-manager/main"
 REPO_INSTALL="$REPO_BASE/install.sh"
 CRONTAB="/etc/crontabs/root"
@@ -218,8 +218,10 @@ version_gt() {
 }
 fetch_remote_install() {
     out="$1"
-    if wget -q -O "$out" "$REPO_INSTALL"; then return 0; fi
-    if command -v curl >/dev/null 2>&1 && curl -fsSL -o "$out" "$REPO_INSTALL"; then return 0; fi
+    cache_key="$(date +%s)-$$"
+    url="${REPO_INSTALL}?_=${cache_key}"
+    if wget -q -O "$out" "$url"; then return 0; fi
+    if command -v curl >/dev/null 2>&1 && curl -fsSL -o "$out" "$url"; then return 0; fi
     return 1
 }
 remote_version() {
@@ -235,11 +237,13 @@ remote_version() {
 }
 fetch_remote_version() {
     out="$1"
-    if wget -q -O "$out" "$REPO_BASE/version"; then
+    cache_key="$(date +%s)-$$"
+    url="${REPO_BASE}/version?_=${cache_key}"
+    if wget -q -O "$out" "$url"; then
         tr -d '\r\n ' < "$out"
         return 0
     fi
-    if command -v curl >/dev/null 2>&1 && curl -fsSL -o "$out" "$REPO_BASE/version"; then
+    if command -v curl >/dev/null 2>&1 && curl -fsSL -o "$out" "$url"; then
         tr -d '\r\n ' < "$out"
         return 0
     fi

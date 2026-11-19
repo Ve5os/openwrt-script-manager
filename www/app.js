@@ -1,6 +1,6 @@
 'use strict';
 
-const BUILD_VERSION = '2026.11.19.06';
+const BUILD_VERSION = '2026.11.19.07';
 const state = { scripts: [], current: null, creating: false, update: null };
 const $ = (id) => document.getElementById(id);
 
@@ -26,6 +26,7 @@ async function api(action, data = {}) {
 
 async function apiGet(action, params = {}) {
   const query = new URLSearchParams({ action, ...params });
+  if (action === 'version_check') query.set('_', `${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const response = await fetch(`/cgi-bin/api.sh?${query}`);
   let result;
   try { result = await response.json(); } catch (_) { throw new Error(`Сервер вернул некорректный ответ (${response.status})`); }
