@@ -1,15 +1,14 @@
 #!/bin/sh
 # Установщик OpenWrt Script Manager.
-# POSIX sh, идемпотентный и не трогает существующие пользовательские скрипты.
+# Чисто обновляет файлы менеджера, не удаляя пользовательские скрипты.
 
 set -eu
 
 REPO_BASE="https://raw.githubusercontent.com/Ve5os/openwrt-script-manager/main"
-BUILD_VERSION="2026.11.19.07"
+BUILD_VERSION="2026.11.19.08"
 TMP_DIR="/tmp/openwrt-script-manager-install.$$"
 WEB_ROOT="/www-script-manager"
 SCRIPT_DIR="/etc/my_scripts"
-UCI_CONFIG="/etc/config/uhttpd"
 
 log() { printf '%s\n' "[script-manager] $*"; }
 fail() { printf '%s\n' "[script-manager] ERROR: $*" >&2; rm -rf "$TMP_DIR" 2>/dev/null || true; exit 1; }
@@ -39,6 +38,13 @@ fetch "$REPO_BASE/www/style.css" "$TMP_DIR/www/style.css"
 fetch "$REPO_BASE/www/app.js" "$TMP_DIR/www/app.js"
 fetch "$REPO_BASE/cgi-bin/api.sh" "$TMP_DIR/cgi-bin/api.sh"
 
+# Важно: очищаем только файлы предыдущей установки менеджера.
+# /etc/my_scripts не трогаем вообще — пользовательские скрипты должны сохраниться.
+if [ -d "$WEB_ROOT" ]; then
+    log "Удаляю файлы предыдущей сборки из $WEB_ROOT"
+    rm -rf "$WEB_ROOT"
+fi
+
 log "Создаю каталоги"
 mkdir -p "$WEB_ROOT/cgi-bin" "$SCRIPT_DIR"
 
@@ -49,23 +55,17 @@ cp "$TMP_DIR/www/app.js" "$WEB_ROOT/app.js"
 cp "$TMP_DIR/cgi-bin/api.sh" "$WEB_ROOT/cgi-bin/api.sh"
 chmod 0755 "$WEB_ROOT/cgi-bin/api.sh"
 
+# Сохраняем существующую конфигурацию uhttpd и не создаём дубликаты.
 if ! uci -q get uhttpd.script_manager >/dev/null 2>&1; then
     log "Добавляю экземпляр uhttpd на порту 9696"
     sid="$(uci add uhttpd uhttpd)"
     uci rename "uhttpd.$sid=script_manager"
-    uci set uhttpd.script_manager.listen_http='0.0.0.0:9696'
-    uci set uhttpd.script_manager.home="$WEB_ROOT"
-    uci set uhttpd.script_manager.cgi_prefix='/cgi-bin'
-    uci set uhttpd.script_manager.index_page='index.html'
-    uci set uhttpd.script_manager.error_page='/index.html'
-else
-    log "Экземпляр uhttpd.script_manager уже существует — обновляю параметры"
-    uci set uhttpd.script_manager.listen_http='0.0.0.0:9696'
-    uci set uhttpd.script_manager.home="$WEB_ROOT"
-    uci set uhttpd.script_manager.cgi_prefix='/cgi-bin'
-    uci set uhttpd.script_manager.index_page='index.html'
-    uci set uhttpd.script_manager.error_page='/index.html'
 fi
+uci set uhttpd.script_manager.listen_http='0.0.0.0:9696'
+uci set uhttpd.script_manager.home="$WEB_ROOT"
+uci set uhttpd.script_manager.cgi_prefix='/cgi-bin'
+uci set uhttpd.script_manager.index_page='index.html'
+uci set uhttpd.script_manager.error_page='/index.html'
 
 auth_ref=''
 if uci -q get uhttpd.script_manager.httpauth >/dev/null 2>&1; then
@@ -103,8 +103,7 @@ log "Перезапускаю uhttpd"
 log "Перезагружаю cron"
 /etc/init.d/cron reload 2>/dev/null || /etc/init.d/cron restart
 
-# Script Manager дополнительно запускаем при старте через cron, если BusyBox crond
-# поддерживает специальные времена (@reboot). Строка идемпотентна.
+# Автозапуск uhttpd сохраняем только один раз.
 CRONTAB="/etc/crontabs/root"
 mkdir -p /etc/crontabs
 touch "$CRONTAB"

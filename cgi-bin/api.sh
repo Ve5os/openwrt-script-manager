@@ -5,7 +5,7 @@
 set -u
 
 SCRIPT_DIR="/etc/my_scripts"
-BUILD_VERSION="2026.11.19.07"
+BUILD_VERSION="2026.11.19.08"
 REPO_BASE="https://raw.githubusercontent.com/Ve5os/openwrt-script-manager/main"
 REPO_INSTALL="$REPO_BASE/install.sh"
 CRONTAB="/etc/crontabs/root"
@@ -144,19 +144,31 @@ ensure_crontab() {
 cron_schedule_for() {
     name="$1"
     ensure_crontab
-    awk -v p="$SCRIPT_DIR/$name" '
-        $0 !~ /^[[:space:]]*#/ && index($0,p) {
-            if ($1 == "@reboot") print "@reboot"
-            else if (NF >= 5) print $1 " " $2 " " $3 " " $4 " " $5
-            exit
+    path="$SCRIPT_DIR/$name"
+    awk -v p="$path" '
+        {
+            line=$0
+            # Убираем только начальный комментарий у отключённой записи.
+            sub(/^[[:space:]]*#[[:space:]]?/, "", line)
+            n=split(line, f, /[[:space:]]+/)
+            if (n >= 2 && f[n] == p) {
+                if (f[1] == "@reboot") print "@reboot"
+                else if (n >= 6) print f[1] " " f[2] " " f[3] " " f[4] " " f[5]
+                exit
+            }
         }
     ' "$CRONTAB"
 }
 cron_enabled_for() {
     name="$1"
     ensure_crontab
-    awk -v p="$SCRIPT_DIR/$name" '
-        $0 !~ /^[[:space:]]*#/ && index($0,p) { found=1; exit }
+    path="$SCRIPT_DIR/$name"
+    awk -v p="$path" '
+        /^[[:space:]]*#/ { next }
+        {
+            n=split($0, f, /[[:space:]]+/)
+            if (n >= 2 && f[n] == p) { found=1; exit }
+        }
         END { exit(found ? 0 : 1) }
     ' "$CRONTAB"
 }
@@ -165,37 +177,33 @@ cron_update() {
     path="$SCRIPT_DIR/$name"
     ensure_crontab
     tmp="$TMP_BASE.cron"
-    found=0
-    awk -v n="$name" -v p="$path" -v mode="$mode" -v sched="$schedule" '
+
+    # Полностью удаляем старые записи этого скрипта, включая старые
+    # отключённые варианты. Затем добавляем ровно одну актуальную запись.
+    awk -v p="$path" '
         {
             line=$0
-            hit=(index(line,p) > 0)
-            if (hit) {
-                found=1
-                if (mode == "disable") {
-                    if (line ~ /^[[:space:]]*#/) print line
-                    else print "# " line
-                    next
-                }
-                if (mode == "enable") {
-                    if (line ~ /^[[:space:]]*#/) {
-                        sub(/^[[:space:]]*#[[:space:]]?/, "", line)
-                        print line
-                    } else print line
-                    next
-                }
-                if (mode == "replace") {
-                    print sched " " p
-                    next
-                }
-            }
+            clean=line
+            sub(/^[[:space:]]*#[[:space:]]?/, "", clean)
+            n=split(clean, f, /[[:space:]]+/)
+            if (n >= 2 && f[n] == p) next
             print line
         }
-        END {
-            if (!found && (mode == "enable" || mode == "replace"))
-                print sched " " p
-        }
     ' "$CRONTAB" > "$tmp"
+
+    case "$mode" in
+        replace|enable)
+            printf '%s %s\n' "$schedule" "$path" >> "$tmp"
+            ;;
+        disable)
+            printf '# %s %s\n' "$schedule" "$path" >> "$tmp"
+            ;;
+        *)
+            rm -f "$tmp"
+            return 1
+            ;;
+    esac
+
     mv "$tmp" "$CRONTAB"
     if /etc/init.d/cron reload >/dev/null 2>&1; then :; else /etc/init.d/cron restart >/dev/null 2>&1 || true; fi
 }
@@ -301,37 +309,19 @@ case "$ACTION" in
         ;;
     update)
         [ "${REQUEST_METHOD:-GET}" = 'POST' ] || error_json 400 'update доступен только через POST'
-        requested="$(json_get version '')"
-        version_tmp="$TMP_BASE.version-update"
-        latest=""
-        if latest="$(fetch_remote_version "$version_tmp" 2>/dev/null || true)"; then
-            case "$latest" in
-                ''|*[!0-9.]*|.*|*.) latest='' ;;
-            esac
-        fi
-        tmp="$TMP_BASE.install-update"
-        if ! fetch_remote_install "$tmp"; then
-            error_json 503 'Не удалось скачать обновление с GitHub'
-        fi
-        installer_version="$(remote_version "$tmp")"
-        [ -n "$latest" ] || latest="$installer_version"
-        [ -n "$latest" ] || error_json 500 'Не удалось определить версию обновления'
-        [ -n "$installer_version" ] || error_json 500 'Не удалось определить версию установщика'
-        [ "$requested" = "$latest" ] || error_json 409 'Версия обновления устарела, сначала проверьте обновления ещё раз'
-        [ "$installer_version" = "$latest" ] || error_json 409 'Версия установщика не совпадает с версией обновления'
-        version_gt "$latest" "$BUILD_VERSION" || error_json 409 'Новая версия не найдена'
+
+        # Автообновление намеренно не зависит от version_check и не сравнивает
+        # версии. Кнопка выполняет тот же самый официальный install-командный
+        # вызов, который пользователь может запустить вручную по SSH.
         update_script="/tmp/openwrt-script-manager-update.sh"
         update_log="/tmp/openwrt-script-manager-update.log"
-        cp "$tmp" "$update_script"
-        chmod 0755 "$update_script"
-        cat > /tmp/openwrt-script-manager-update-launcher.sh <<EOF
+        cat > "$update_script" <<'EOF_UPDATE'
 #!/bin/sh
-sleep 2
-exec /bin/sh "$update_script"
-EOF
-        chmod 0755 /tmp/openwrt-script-manager-update-launcher.sh
-        nohup /bin/sh /tmp/openwrt-script-manager-update-launcher.sh >"$update_log" 2>&1 </dev/null &
-        respond 200 "{\"ok\":true,\"version\":\"$latest\"}"
+sh -c "$(wget -qO- https://raw.githubusercontent.com/Ve5os/openwrt-script-manager/main/install.sh)"
+EOF_UPDATE
+        chmod 0755 "$update_script"
+        nohup /bin/sh "$update_script" >"$update_log" 2>&1 </dev/null &
+        respond 200 '{"ok":true,"message":"Обновление запущено"}'
         ;;
     list)
         [ "${REQUEST_METHOD:-GET}" = 'GET' ] || error_json 400 'list доступен только через GET'

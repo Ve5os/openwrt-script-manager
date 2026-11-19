@@ -1,6 +1,6 @@
 'use strict';
 
-const BUILD_VERSION = '2026.11.19.07';
+const BUILD_VERSION = '2026.11.19.08';
 const state = { scripts: [], current: null, creating: false, update: null };
 const $ = (id) => document.getElementById(id);
 
@@ -64,14 +64,13 @@ async function checkForUpdate(manual = false) {
 }
 
 async function installUpdate() {
-  if (!state.update) return;
-  const version = state.update.latest_version;
-  if (!window.confirm(`Обновить Script Manager до сборки ${version}?\n\nПанель будет автоматически перезапущена.`)) return;
   const button = $('updateBtn');
+  if (!button) return;
+  if (!window.confirm('Запустить автообновление Script Manager?\n\nБудет выполнена официальная команда установки из GitHub. Пользовательские скрипты не удаляются.')) return;
   button.disabled = true;
   button.textContent = 'Обновление…';
   try {
-    await api('update', { version });
+    await api('update');
     showToast('Обновление запущено. Панель перезапустится…');
     setTimeout(() => window.location.reload(), 5000);
   } catch (error) {
