@@ -232,7 +232,7 @@ function cronFromUi() {
 function humanSchedule() {
   const type = document.querySelector('input[name="scheduleType"]:checked').value;
 
-  if (type === 'startup') return 'при запуске OpenWrt';
+  if (type === 'startup') return 'При загрузке OpenWRT скрипт будет выполнен один раз';
   if (type === 'manual') return $('manualCron').value.trim() || 'ручное cron-расписание';
 
   if (type === 'interval') {
