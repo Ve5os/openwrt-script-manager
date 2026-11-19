@@ -37,8 +37,9 @@ fetch "$REPO_BASE/www/style.css" "$TMP_DIR/www/style.css"
 fetch "$REPO_BASE/www/app.js" "$TMP_DIR/www/app.js"
 fetch "$REPO_BASE/cgi-bin/api.sh" "$TMP_DIR/cgi-bin/api.sh"
 fetch "$REPO_BASE/version" "$TMP_DIR/version"
-case "$BUILD_VERSION" in
-    ''|*[!0-9.]*|.*|*.) fail "Некорректная версия в $REPO_BASE/version: $BUILD_VERSION" ;;
+VERSION="$(tr -d '\r\n ' < "$TMP_DIR/version")"
+case "$VERSION" in
+    ''|*[!0-9.]*|.*|*.) fail "Некорректная версия в $REPO_BASE/version: $VERSION" ;;
 esac
 
 # Важно: очищаем только файлы предыдущей установки менеджера.
@@ -126,6 +127,6 @@ fi
 log "Установка завершена"
 printf '\n========================================\n'
 printf ' OpenWrt Script Manager\n'
-printf ' Build: %s\n' "$BUILD_VERSION"
+printf ' Build: %s\n' "$VERSION"
 printf ' URL: http://%s:9696\n' "$IP"
 printf '========================================\n'

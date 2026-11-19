@@ -237,25 +237,6 @@ version_gt() {
         exit 1
     }'
 }
-fetch_remote_install() {
-    out="$1"
-    cache_key="$(date +%s)-$$"
-    url="${REPO_INSTALL}?_=${cache_key}"
-    if wget -q -O "$out" "$url"; then return 0; fi
-    if command -v curl >/dev/null 2>&1 && curl -fsSL -o "$out" "$url"; then return 0; fi
-    return 1
-}
-remote_version() {
-    file="$1"
-    awk '
-        /^[[:space:]]*BUILD_VERSION[[:space:]]*=/ {
-            line=$0
-            sub(/^[[:space:]]*BUILD_VERSION[[:space:]]*=[[:space:]]*/, "", line)
-            gsub(/^["\047]|["\047][[:space:]]*$/, "", line)
-            if (line ~ /^[0-9][0-9.]*$/) { print line; exit }
-        }
-    ' "$file" | head -n 1
-}
 fetch_remote_version() {
     out="$1"
     cache_key="$(date +%s)-$$"
@@ -302,19 +283,10 @@ case "$ACTION" in
     version_check)
         version_tmp="$TMP_BASE.version-check"
         latest=''
-        if latest="$(fetch_remote_version "$version_tmp" 2>/dev/null || true)"; then
-            case "$latest" in
-                ''|*[!0-9.]*|.*|*.) latest='' ;;
-            esac
-        fi
-        if [ -z "$latest" ]; then
-            tmp="$TMP_BASE.install-check"
-            if ! fetch_remote_install "$tmp"; then
-                error_json 503 'Не удалось связаться с GitHub'
-            fi
-            latest="$(remote_version "$tmp")"
-        fi
-        [ -n "$latest" ] || error_json 500 'Не удалось определить версию на GitHub'
+        latest="$(fetch_remote_version "$version_tmp" 2>/dev/null || true)"
+        case "$latest" in
+            ''|*[!0-9.]*|.*|*.) error_json 503 'Не удалось получить корректную версию с GitHub' ;;
+        esac
         current="$(get_local_version 2>/dev/null || true)"
         case "$current" in
             ''|*[!0-9.]*|.*|*.) error_json 500 'Не удалось определить локальную версию' ;;
