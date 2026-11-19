@@ -24,6 +24,31 @@ async function api(action, data = {}) {
 }
 
 async function apiGet(action, params = {}) {
+
+// OSM VERSION DEBUG: network diagnostics for browser console.
+if (!window.__osmVersionDebugFetchInstalled) {
+    window.__osmVersionDebugFetchInstalled = true;
+    const __osmOriginalFetch = window.fetch;
+    window.fetch = async function(...args) {
+        const url = args[0] instanceof Request ? args[0].url : String(args[0]);
+        const isVersionRequest = url.includes('version_check') || url.includes('/version');
+        if (isVersionRequest) {
+            console.log('[OSM VERSION DEBUG] fetch →', url);
+        }
+        const response = await __osmOriginalFetch.apply(this, args);
+        if (isVersionRequest) {
+            console.log('[OSM VERSION DEBUG] fetch ←', response.status, response.statusText, response.url);
+            try {
+                const clone = response.clone();
+                const body = await clone.text();
+                console.log('[OSM VERSION DEBUG] response body:', body);
+            } catch (e) {
+                console.warn('[OSM VERSION DEBUG] Не удалось прочитать response body:', e);
+            }
+        }
+        return response;
+    };
+}
   const query = new URLSearchParams({ action, ...params });
   if (action === 'version_check') query.set('_', `${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const response = await fetch(`/cgi-bin/api.sh?${query}`);
