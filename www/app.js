@@ -1,6 +1,5 @@
 'use strict';
 
-const BUILD_VERSION = '2026.11.19.10';
 const state = { scripts: [], current: null, creating: false, update: null };
 const $ = (id) => document.getElementById(id);
 
@@ -42,6 +41,8 @@ async function checkForUpdate(manual = false) {
   }
   try {
     const result = await apiGet('version_check');
+    const buildVersion = $('buildVersion');
+    if (buildVersion) buildVersion.textContent = result.current_version;
     state.update = result.update_available ? result : null;
     const notice = $('updateNotice');
     const versionText = $('updateVersionText');

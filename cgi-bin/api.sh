@@ -5,7 +5,8 @@
 set -u
 
 SCRIPT_DIR="/etc/my_scripts"
-BUILD_VERSION="2026.11.19.09"
+WEB_ROOT="/www-script-manager"
+VERSION_FILE="$WEB_ROOT/version"
 REPO_BASE="https://raw.githubusercontent.com/Ve5os/openwrt-script-manager/main"
 REPO_INSTALL="$REPO_BASE/install.sh"
 CRONTAB="/etc/crontabs/root"
@@ -216,11 +217,23 @@ cron_remove() {
     mv "$tmp" "$CRONTAB"
     if /etc/init.d/cron reload >/dev/null 2>&1; then :; else /etc/init.d/cron restart >/dev/null 2>&1 || true; fi
 }
+get_local_version() {
+    if [ -r "$VERSION_FILE" ]; then
+        tr -d '\r\n ' < "$VERSION_FILE"
+        return 0
+    fi
+    return 1
+}
 version_gt() {
     old="$1"; new="$2"
     awk -v a="$old" -v b="$new" 'BEGIN {
         na=split(a,A,"."); nb=split(b,B,"."); n=(na>nb?na:nb)
-        for(i=1;i<=n;i++) { x=A[i]+0; y=B[i]+0; if(y>x) exit 0; if(y<x) exit 1 }
+        for(i=1;i<=n;i++) {
+            x=(A[i] == "" ? 0 : A[i]+0)
+            y=(B[i] == "" ? 0 : B[i]+0)
+            if(y>x) exit 0
+            if(y<x) exit 1
+        }
         exit 1
     }'
 }
@@ -302,10 +315,14 @@ case "$ACTION" in
             latest="$(remote_version "$tmp")"
         fi
         [ -n "$latest" ] || error_json 500 'Не удалось определить версию на GitHub'
-        if version_gt "$latest" "$BUILD_VERSION"; then
-            respond 200 "{\"current_version\":\"$BUILD_VERSION\",\"latest_version\":\"$latest\",\"update_available\":true}"
+        current="$(get_local_version 2>/dev/null || true)"
+        case "$current" in
+            ''|*[!0-9.]*|.*|*.) error_json 500 'Не удалось определить локальную версию' ;;
+        esac
+        if version_gt "$latest" "$current"; then
+            respond 200 "{\"current_version\":\"$current\",\"latest_version\":\"$latest\",\"update_available\":true}"
         fi
-        respond 200 "{\"current_version\":\"$BUILD_VERSION\",\"latest_version\":\"$latest\",\"update_available\":false}"
+        respond 200 "{\"current_version\":\"$current\",\"latest_version\":\"$latest\",\"update_available\":false}"
         ;;
     update)
         [ "${REQUEST_METHOD:-GET}" = 'POST' ] || error_json 400 'update доступен только через POST'

@@ -5,7 +5,7 @@
 set -eu
 
 REPO_BASE="https://raw.githubusercontent.com/Ve5os/openwrt-script-manager/main"
-BUILD_VERSION="2026.11.19.10"
+BUILD_VERSION=""
 TMP_DIR="/tmp/openwrt-script-manager-install.$$"
 WEB_ROOT="/www-script-manager"
 SCRIPT_DIR="/etc/my_scripts"
@@ -37,6 +37,11 @@ fetch "$REPO_BASE/www/index.html" "$TMP_DIR/www/index.html"
 fetch "$REPO_BASE/www/style.css" "$TMP_DIR/www/style.css"
 fetch "$REPO_BASE/www/app.js" "$TMP_DIR/www/app.js"
 fetch "$REPO_BASE/cgi-bin/api.sh" "$TMP_DIR/cgi-bin/api.sh"
+fetch "$REPO_BASE/version" "$TMP_DIR/version"
+BUILD_VERSION="$(tr -d '\r\n ' < "$TMP_DIR/version")"
+case "$BUILD_VERSION" in
+    ''|*[!0-9.]*|.*|*.) fail "Некорректная версия в $REPO_BASE/version: $BUILD_VERSION" ;;
+esac
 
 # Важно: очищаем только файлы предыдущей установки менеджера.
 # /etc/my_scripts не трогаем вообще — пользовательские скрипты должны сохраниться.
@@ -53,6 +58,7 @@ cp "$TMP_DIR/www/index.html" "$WEB_ROOT/index.html"
 cp "$TMP_DIR/www/style.css" "$WEB_ROOT/style.css"
 cp "$TMP_DIR/www/app.js" "$WEB_ROOT/app.js"
 cp "$TMP_DIR/cgi-bin/api.sh" "$WEB_ROOT/cgi-bin/api.sh"
+cp "$TMP_DIR/version" "$WEB_ROOT/version"
 chmod 0755 "$WEB_ROOT/cgi-bin/api.sh"
 
 # Сохраняем существующую конфигурацию uhttpd и не создаём дубликаты.
