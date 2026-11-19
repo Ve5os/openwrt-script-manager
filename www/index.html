@@ -30,9 +30,39 @@
       </div>
       <div id="scriptList" class="script-list"></div>
       <div id="emptyList" class="empty-list hidden">Скриптов пока нет</div>
+
+      <div class="sidebar-settings">
+        <div class="sidebar-divider"></div>
+        <button id="settingsBtn" class="settings-btn" type="button">
+          <span class="settings-icon">⚙</span>
+          <span>Настройки</span>
+        </button>
+      </div>
     </aside>
 
     <main class="main">
+      <section id="settingsView" class="settings-view hidden">
+        <header class="settings-header">
+          <div>
+            <div class="eyebrow">Системные настройки</div>
+            <h1>Настройки</h1>
+            <p>Управление самим Script Manager и его установкой.</p>
+          </div>
+        </header>
+
+        <section class="settings-card danger-card">
+          <div class="settings-card-content">
+            <div class="settings-card-icon">!</div>
+            <div>
+              <h2>Удаление менеджера</h2>
+              <p>Полностью удалить Script Manager с роутера вместе со всеми скриптами менеджера и связанными записями cron.</p>
+              <span class="settings-warning">Это действие нельзя отменить.</span>
+            </div>
+          </div>
+          <button id="uninstallBtn" class="btn danger manager-uninstall" type="button">Удалить</button>
+        </section>
+      </section>
+
       <div id="editorEmpty" class="editor-empty">
         <div class="empty-icon">⌘</div>
         <h1>Выберите скрипт</h1>
@@ -157,7 +187,6 @@ echo &quot;Hello, OpenWrt!&quot;"></textarea>
           </div>
           <div class="actions-right">
             <button id="deleteBtn" class="btn danger">Удалить</button>
-            <button id="uninstallBtn" class="btn manager-uninstall" type="button">Удалить менеджер</button>
           </div>
         </footer>
       </section>

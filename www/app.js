@@ -178,6 +178,17 @@ function renderList() {
 function setEditorVisible(visible) {
   $('editor').classList.toggle('hidden', !visible);
   $('editorEmpty').classList.toggle('hidden', visible);
+  if (visible) {
+    $('settingsView').classList.add('hidden');
+    $('settingsBtn').classList.remove('active');
+  }
+}
+
+function openSettings() {
+  $('editor').classList.add('hidden');
+  $('editorEmpty').classList.add('hidden');
+  $('settingsView').classList.remove('hidden');
+  $('settingsBtn').classList.add('active');
 }
 
 function updateStatus(enabled) {
@@ -352,6 +363,8 @@ async function openScript(name) {
     const result = await apiGet('get', { name });
     state.current = result.name;
     state.creating = false;
+    $('settingsView').classList.add('hidden');
+    $('settingsBtn').classList.remove('active');
     const editorTitle = $('editorTitle');
     if (editorTitle) editorTitle.textContent = displayName(result.name);
     $('nameInput').value = displayName(result.name);
@@ -368,6 +381,8 @@ async function openScript(name) {
 }
 
 function newScript() {
+  $('settingsView').classList.add('hidden');
+  $('settingsBtn').classList.remove('active');
   state.current = null;
   state.creating = true;
   const editorTitle = $('editorTitle');
@@ -516,6 +531,7 @@ $('saveBtn').addEventListener('click', saveScript);
 $('runBtn').addEventListener('click', runScript);
 $('deleteBtn').addEventListener('click', deleteScript);
 $('uninstallBtn').addEventListener('click', showUninstallDialog);
+$('settingsBtn').addEventListener('click', openSettings);
 $('clearOutputBtn').addEventListener('click', clearOutput);
 document.querySelectorAll('input[name="scheduleType"]').forEach((el) => el.addEventListener('change', updateScheduleUi));
 $('intervalValue').addEventListener('input', updateScheduleUi);
