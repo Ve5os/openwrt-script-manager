@@ -291,7 +291,7 @@ case "$ACTION" in
         case "$current" in
             ''|*[!0-9.]*|.*|*.) error_json 500 'Не удалось определить локальную версию' ;;
         esac
-        if version_gt "$latest" "$current"; then
+        if version_gt "$current" "$latest"; then
             respond 200 "{\"current_version\":\"$current\",\"latest_version\":\"$latest\",\"update_available\":true}"
         fi
         respond 200 "{\"current_version\":\"$current\",\"latest_version\":\"$latest\",\"update_available\":false}"
