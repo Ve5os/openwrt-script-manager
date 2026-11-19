@@ -233,25 +233,24 @@ function cronFromUi() {
 }
 
 function humanSchedule() {
-  const type = document.querySelector('input[name="scheduleType"]:checked').value;
+  const type = $('scheduleType')?.value || 'manual';
 
-  if (type === 'startup') return 'При загрузке OpenWRT скрипт будет выполнен один раз';
-  if (type === 'manual') return $('manualCron').value.trim() || 'ручное cron-расписание';
-
-  if (type === 'interval') {
-    const value = Math.max(1, Number.parseInt($('intervalValue').value, 10) || 1);
-    const unit = $('intervalUnit').value;
-    if (unit === 'minute') return value === 1 ? 'каждую минуту' : `каждые ${value} мин.`;
-    if (unit === 'hour') return value === 1 ? 'каждый час' : `каждые ${value} ч.`;
-    return value === 1 ? 'каждый день' : `каждые ${value} дн.`;
+  switch (type) {
+    case 'boot':
+      return 'При загрузке OpenWrt скрипт будет выполнен один раз после запуска системы.';
+    case 'reboot':
+      return 'При каждой перезагрузке OpenWrt скрипт будет выполнен один раз после запуска системы.';
+    case 'once':
+      return 'Скрипт будет выполнен один раз в указанную дату и время.';
+    case 'interval':
+      return 'Скрипт будет запускаться автоматически через заданный промежуток времени.';
+    case 'cron':
+      return 'Скрипт будет запускаться автоматически по заданному расписанию.';
+    case 'manual':
+      return 'Скрипт не запускается автоматически — его можно выполнить вручную.';
+    default:
+      return 'Скрипт будет запускаться автоматически по заданному расписанию.';
   }
-
-  const time = type === 'daily' ? $('dailyTime').value : $('weeklyTime').value;
-  if (type === 'daily') return `каждый день в ${time}`;
-
-  const names = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
-  const days = [...document.querySelectorAll('#weeklySettings .day-option input:checked')].map((el) => names[Number(el.value)]);
-  return `${days.join(', ')} в ${time}`;
 }
 
 function updateScheduleUi() {
@@ -263,7 +262,6 @@ function updateScheduleUi() {
   $('weeklySettings').classList.toggle('hidden', type !== 'weekly');
   const scheduleText = humanSchedule();
   const human = $('humanSchedule');
-  const summary = $('scheduleSummary');
   if (human) human.textContent = scheduleText;
   if (summary) summary.textContent = scheduleText;
 }
