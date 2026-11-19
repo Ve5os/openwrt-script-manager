@@ -49,7 +49,7 @@ button { cursor: pointer; }
 .sidebar-head { display: flex; justify-content: space-between; align-items: center; padding: 0 7px 10px; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
 .icon-btn { width: 31px; height: 31px; border: 1px solid var(--line); border-radius: 9px; color: var(--text); background: var(--panel-2); font-size: 20px; line-height: 1; }
 .icon-btn:hover { border-color: #3b4653; background: #1d232b; }
-.script-list { display: grid; gap: 5px; overflow: auto; min-height: 0; flex: 1 1 auto; }
+.script-list { display: grid; align-content: start; gap: 5px; overflow: auto; min-height: 0; flex: 1 1 auto; }
 .script-item {
   width: 100%; border: 1px solid transparent; border-radius: 11px; background: transparent;
   color: var(--text); text-align: left; padding: 8px 10px; display: flex; align-items: center; gap: 10px;
