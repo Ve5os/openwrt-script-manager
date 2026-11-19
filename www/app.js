@@ -1,7 +1,7 @@
 'use strict';
 
-const BUILD_VERSION = '2026.11.19.01';
-const state = { scripts: [], current: null, creating: false };
+const BUILD_VERSION = '2026.11.19.02';
+const state = { scripts: [], current: null, creating: false, update: null };
 const $ = (id) => document.getElementById(id);
 
 function showToast(message, error = false) {
@@ -31,6 +31,53 @@ async function apiGet(action, params = {}) {
   try { result = await response.json(); } catch (_) { throw new Error(`Сервер вернул некорректный ответ (${response.status})`); }
   if (!response.ok) throw new Error(result.error || `Ошибка HTTP ${response.status}`);
   return result;
+}
+
+async function checkForUpdate(manual = false) {
+  const button = $('updateCheckBtn');
+  if (button) {
+    button.classList.add('busy');
+    button.textContent = '…';
+  }
+  try {
+    const result = await apiGet('version_check');
+    state.update = result.update_available ? result : null;
+    const notice = $('updateNotice');
+    const versionText = $('updateVersionText');
+    if (result.update_available) {
+      versionText.textContent = `Текущая ${result.current_version} → новая ${result.latest_version}`;
+      notice.classList.remove('hidden');
+      if (manual) showToast(`Доступна сборка ${result.latest_version}`);
+    } else {
+      notice.classList.add('hidden');
+      if (manual) showToast(`Установлена последняя сборка ${result.current_version}`);
+    }
+  } catch (error) {
+    if (manual) showToast(`Не удалось проверить обновления: ${error.message}`, true);
+  } finally {
+    if (button) {
+      button.classList.remove('busy');
+      button.textContent = '↻';
+    }
+  }
+}
+
+async function installUpdate() {
+  if (!state.update) return;
+  const version = state.update.latest_version;
+  if (!window.confirm(`Обновить Script Manager до сборки ${version}?\n\nПанель будет автоматически перезапущена.`)) return;
+  const button = $('updateBtn');
+  button.disabled = true;
+  button.textContent = 'Обновление…';
+  try {
+    await api('update', { version });
+    showToast('Обновление запущено. Панель перезапустится…');
+    setTimeout(() => window.location.reload(), 5000);
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = 'Обновить';
+    showToast(error.message, true);
+  }
 }
 
 function displayName(name) {
@@ -379,6 +426,8 @@ async function deleteScript() {
   }
 }
 
+$('updateCheckBtn').addEventListener('click', () => checkForUpdate(true));
+$('updateBtn').addEventListener('click', installUpdate);
 $('newBtn').addEventListener('click', newScript);
 $('saveBtn').addEventListener('click', saveScript);
 $('enabledToggle').addEventListener('change', toggleScript);
@@ -396,6 +445,7 @@ document.querySelectorAll('#weeklySettings .day-option input').forEach((el) => e
   try {
     await refreshList(false);
     updateScheduleUi();
+    checkForUpdate(false);
   } catch (error) {
     showToast(error.message, true);
   }

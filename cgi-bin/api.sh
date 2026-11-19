@@ -5,6 +5,9 @@
 set -u
 
 SCRIPT_DIR="/etc/my_scripts"
+BUILD_VERSION="2026.11.19.02"
+REPO_BASE="https://raw.githubusercontent.com/Ve5os/openwrt-script-manager/main"
+REPO_INSTALL="$REPO_BASE/install.sh"
 CRONTAB="/etc/crontabs/root"
 DEFAULT_SCHEDULE='*/1 * * * *'
 TMP_BASE="/tmp/script-manager.$$"
@@ -204,6 +207,24 @@ cron_remove() {
     mv "$tmp" "$CRONTAB"
     if /etc/init.d/cron reload >/dev/null 2>&1; then :; else /etc/init.d/cron restart >/dev/null 2>&1 || true; fi
 }
+version_gt() {
+    old="$1"; new="$2"
+    awk -v a="$old" -v b="$new" 'BEGIN {
+        na=split(a,A,"."); nb=split(b,B,"."); n=(na>nb?na:nb)
+        for(i=1;i<=n;i++) { x=A[i]+0; y=B[i]+0; if(y>x) exit 0; if(y<x) exit 1 }
+        exit 1
+    }'
+}
+fetch_remote_install() {
+    out="$1"
+    if wget -q -O "$out" "$REPO_INSTALL"; then return 0; fi
+    if command -v curl >/dev/null 2>&1 && curl -fsSL -o "$out" "$REPO_INSTALL"; then return 0; fi
+    return 1
+}
+remote_version() {
+    file="$1"
+    sed -n 's/^[[:space:]]*BUILD_VERSION="\([0-9][0-9.]*\)"[[:space:]]*$/\1/p' "$file" | head -n 1
+}
 list_scripts() {
     body="$TMP_BASE.list"
     first=1
@@ -233,6 +254,42 @@ else
     ACTION="$(json_get action '')"
 fi
 case "$ACTION" in
+    version_check)
+        tmp="$TMP_BASE.install-check"
+        if ! fetch_remote_install "$tmp"; then
+            error_json 503 'Не удалось связаться с GitHub'
+        fi
+        latest="$(remote_version "$tmp")"
+        [ -n "$latest" ] || error_json 500 'Не удалось определить версию на GitHub'
+        if version_gt "$latest" "$BUILD_VERSION"; then
+            respond 200 "{\"current_version\":\"$BUILD_VERSION\",\"latest_version\":\"$latest\",\"update_available\":true}"
+        fi
+        respond 200 "{\"current_version\":\"$BUILD_VERSION\",\"latest_version\":\"$latest\",\"update_available\":false}"
+        ;;
+    update)
+        [ "${REQUEST_METHOD:-GET}" = 'POST' ] || error_json 400 'update доступен только через POST'
+        requested="$(json_get version '')"
+        tmp="$TMP_BASE.install-update"
+        if ! fetch_remote_install "$tmp"; then
+            error_json 503 'Не удалось скачать обновление с GitHub'
+        fi
+        latest="$(remote_version "$tmp")"
+        [ -n "$latest" ] || error_json 500 'Не удалось определить версию обновления'
+        [ "$requested" = "$latest" ] || error_json 409 'Версия обновления устарела, сначала проверьте обновления ещё раз'
+        version_gt "$latest" "$BUILD_VERSION" || error_json 409 'Новая версия не найдена'
+        update_script="/tmp/openwrt-script-manager-update.sh"
+        update_log="/tmp/openwrt-script-manager-update.log"
+        cp "$tmp" "$update_script"
+        chmod 0755 "$update_script"
+        cat > /tmp/openwrt-script-manager-update-launcher.sh <<EOF
+#!/bin/sh
+sleep 2
+exec /bin/sh "$update_script"
+EOF
+        chmod 0755 /tmp/openwrt-script-manager-update-launcher.sh
+        nohup /bin/sh /tmp/openwrt-script-manager-update-launcher.sh >"$update_log" 2>&1 </dev/null &
+        respond 200 "{\"ok\":true,\"version\":\"$latest\"}"
+        ;;
     list)
         [ "${REQUEST_METHOD:-GET}" = 'GET' ] || error_json 400 'list доступен только через GET'
         list_scripts
