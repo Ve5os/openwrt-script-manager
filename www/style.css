@@ -55,8 +55,6 @@ button { cursor: pointer; }
 }
 .script-item:hover { background: #151a20; }
 .script-item.active { background: #171d25; border-color: #29313b; }
-.script-dot { width: 7px; height: 7px; border-radius: 50%; background: #606a76; flex: 0 0 auto; }
-.script-dot.on { background: var(--success); box-shadow: 0 0 9px rgba(91,212,154,.45); }
 .script-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 13px; flex: 1 1 auto; min-width: 0; }
 .script-cron-toggle {
   width: 34px; height: 19px; border-radius: 999px; border: 1px solid #363e48;
@@ -147,7 +145,7 @@ pre { margin: 0; padding: 14px; max-height: 250px; overflow: auto; white-space: 
 .field-title { font-weight: 600; font-size: 13px; }
 .schedule-summary { margin-top: 3px; color: var(--muted); font-size: 12px; }
 .cron-chip { padding: 4px 7px; border-radius: 7px; border: 1px solid #303944; color: #7f8995; font: 10px ui-monospace, SFMono-Regular, Consolas, monospace; }
-.schedule-type-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-bottom: 15px; }
+.schedule-type-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-bottom: 15px; }
 .schedule-option { position: relative; }
 .schedule-option input { position: absolute; opacity: 0; pointer-events: none; }
 .schedule-option span { display: block; padding: 10px 11px; border: 1px solid #2a313a; border-radius: 9px; color: #aab2bc; text-align: center; cursor: pointer; transition: .15s; }

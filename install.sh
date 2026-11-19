@@ -5,7 +5,7 @@
 set -eu
 
 REPO_BASE="https://raw.githubusercontent.com/Ve5os/openwrt-script-manager/main"
-BUILD_VERSION="2026.11.19.03"
+BUILD_VERSION="2026.11.19.04"
 TMP_DIR="/tmp/openwrt-script-manager-install.$$"
 WEB_ROOT="/www-script-manager"
 SCRIPT_DIR="/etc/my_scripts"
@@ -102,6 +102,16 @@ log "Перезапускаю uhttpd"
 
 log "Перезагружаю cron"
 /etc/init.d/cron reload 2>/dev/null || /etc/init.d/cron restart
+
+# Script Manager дополнительно запускаем при старте через cron, если BusyBox crond
+# поддерживает специальные времена (@reboot). Строка идемпотентна.
+CRONTAB="/etc/crontabs/root"
+mkdir -p /etc/crontabs
+touch "$CRONTAB"
+if ! grep -Fq '# OpenWrt Script Manager autostart' "$CRONTAB"; then
+    printf '%s\n' '@reboot /etc/init.d/uhttpd start # OpenWrt Script Manager autostart' >> "$CRONTAB"
+    /etc/init.d/cron reload 2>/dev/null || /etc/init.d/cron restart
+fi
 
 IP=""
 IP="$(uci -q get network.lan.ipaddr 2>/dev/null || true)"

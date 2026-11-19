@@ -5,11 +5,11 @@
 set -u
 
 SCRIPT_DIR="/etc/my_scripts"
-BUILD_VERSION="2026.11.19.03"
+BUILD_VERSION="2026.11.19.04"
 REPO_BASE="https://raw.githubusercontent.com/Ve5os/openwrt-script-manager/main"
 REPO_INSTALL="$REPO_BASE/install.sh"
 CRONTAB="/etc/crontabs/root"
-DEFAULT_SCHEDULE='*/1 * * * *'
+DEFAULT_SCHEDULE='@reboot'
 TMP_BASE="/tmp/script-manager.$$"
 
 cleanup() {
@@ -146,7 +146,8 @@ cron_schedule_for() {
     ensure_crontab
     awk -v p="$SCRIPT_DIR/$name" '
         $0 !~ /^[[:space:]]*#/ && index($0,p) {
-            if (NF >= 5) print $1 " " $2 " " $3 " " $4 " " $5
+            if ($1 == "@reboot") print "@reboot"
+            else if (NF >= 5) print $1 " " $2 " " $3 " " $4 " " $5
             exit
         }
     ' "$CRONTAB"
@@ -319,13 +320,14 @@ EOF
         valid_name "$name" || error_json 400 'Некорректное имя скрипта'
         path="$(script_path "$name")" || error_json 400 'Некорректное имя скрипта'
         case "$schedule" in
-            *[!0-9*/,\ -]*|*[![:space:]]*) error_json 400 'Некорректное cron-расписание' ;;
+            @reboot) ;;
+            *[!0-9*/,@\ -]*|*[![:space:]]*) error_json 400 'Некорректное cron-расписание' ;;
         esac
         old="$TMP_BASE.script"
         printf '%s' "$content" > "$old"
         mv "$old" "$path"
         chmod 0755 "$path"
-        if cron_enabled_for "$name"; then cron_update "$name" replace "$schedule"; fi
+        cron_update "$name" replace "$schedule"
         respond 200 '{"ok":true}'
         ;;
     toggle)

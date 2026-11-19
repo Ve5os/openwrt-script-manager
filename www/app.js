@@ -1,6 +1,6 @@
 'use strict';
 
-const BUILD_VERSION = '2026.11.19.03';
+const BUILD_VERSION = '2026.11.19.04';
 const state = { scripts: [], current: null, creating: false, update: null };
 const $ = (id) => document.getElementById(id);
 
@@ -121,9 +121,6 @@ function renderList() {
     button.type = 'button';
     button.addEventListener('click', () => openScript(script.name));
 
-    const dot = document.createElement('span');
-    dot.className = `script-dot${script.enabled ? ' on' : ''}`;
-
     const name = document.createElement('span');
     name.className = 'script-name';
     name.textContent = displayName(script.name);
@@ -146,7 +143,7 @@ function renderList() {
       }
     });
 
-    button.append(dot, name, cronToggle);
+    button.append(name, cronToggle);
     list.appendChild(button);
   }
 }
@@ -157,7 +154,6 @@ function setEditorVisible(visible) {
 }
 
 function updateStatus(enabled) {
-  $('enabledToggle').checked = !!enabled;
   $('statusBadge').textContent = enabled ? 'Вкл.' : 'Выкл.';
   $('statusBadge').className = `status-badge ${enabled ? 'on' : 'off'}`;
 }
@@ -169,6 +165,8 @@ function clearOutput() {
 
 function cronFromUi() {
   const type = document.querySelector('input[name="scheduleType"]:checked').value;
+
+  if (type === 'startup') return '@reboot';
 
   if (type === 'interval') {
     const value = Math.max(1, Number.parseInt($('intervalValue').value, 10) || 1);
@@ -202,6 +200,8 @@ function cronFromUi() {
 function humanSchedule() {
   const type = document.querySelector('input[name="scheduleType"]:checked').value;
 
+  if (type === 'startup') return 'при запуске OpenWrt';
+
   if (type === 'interval') {
     const value = Math.max(1, Number.parseInt($('intervalValue').value, 10) || 1);
     const unit = $('intervalUnit').value;
@@ -220,6 +220,7 @@ function humanSchedule() {
 
 function updateScheduleUi() {
   const type = document.querySelector('input[name="scheduleType"]:checked').value;
+  $('startupSettings').classList.toggle('hidden', type !== 'startup');
   $('intervalSettings').classList.toggle('hidden', type !== 'interval');
   $('dailySettings').classList.toggle('hidden', type !== 'daily');
   $('weeklySettings').classList.toggle('hidden', type !== 'weekly');
@@ -228,7 +229,12 @@ function updateScheduleUi() {
 }
 
 function parseCronToUi(schedule) {
-  const value = (schedule || '*/1 * * * *').trim();
+  const value = (schedule || '@reboot').trim();
+  if (value === '@reboot') {
+    $('scheduleTypeStartup').checked = true;
+    updateScheduleUi();
+    return true;
+  }
   const parts = value.split(/\s+/);
   if (parts.length !== 5) return false;
   const [minute, hour, day, month, weekday] = parts;
@@ -282,9 +288,7 @@ function parseCronToUi(schedule) {
 function setScheduleFromCron(schedule) {
   const parsed = parseCronToUi(schedule);
   if (!parsed) {
-    $('scheduleTypeInterval').checked = true;
-    $('intervalValue').value = 1;
-    $('intervalUnit').value = 'minute';
+    $('scheduleTypeStartup').checked = true;
     updateScheduleUi();
     showToast('Старое расписание не распознано — выбрано «каждую минуту».', true);
   }
@@ -308,7 +312,7 @@ async function openScript(name) {
     $('editorTitle').textContent = displayName(result.name);
     $('nameInput').value = displayName(result.name);
     $('nameInput').readOnly = true;
-    setScheduleFromCron(result.schedule || '*/1 * * * *');
+    setScheduleFromCron(result.schedule || '@reboot');
     $('contentInput').value = result.content || '';
     updateStatus(result.enabled);
     clearOutput();
@@ -325,12 +329,9 @@ function newScript() {
   $('editorTitle').textContent = 'Новый скрипт';
   $('nameInput').value = '';
   $('nameInput').readOnly = false;
-  $('scheduleTypeInterval').checked = true;
-  $('intervalValue').value = 1;
-  $('intervalUnit').value = 'minute';
+  $('scheduleTypeStartup').checked = true;
   $('contentInput').value = '#!/bin/sh\n\n';
   updateScheduleUi();
-  updateStatus(false);
   clearOutput();
   setEditorVisible(true);
   renderList();
@@ -364,30 +365,6 @@ async function saveScript() {
     showToast('Скрипт сохранён');
     await refreshList();
   } catch (error) {
-    showToast(error.message, true);
-  }
-}
-
-async function toggleScript() {
-  if (!state.current) return;
-  const enabled = $('enabledToggle').checked;
-  let schedule;
-
-  try {
-    schedule = cronFromUi();
-  } catch (error) {
-    $('enabledToggle').checked = !enabled;
-    showToast(error.message, true);
-    return;
-  }
-
-  try {
-    await api('toggle', { name: state.current, enabled, schedule });
-    updateStatus(enabled);
-    await refreshList();
-    showToast(enabled ? 'Скрипт включён в cron' : 'Скрипт отключён');
-  } catch (error) {
-    $('enabledToggle').checked = !enabled;
     showToast(error.message, true);
   }
 }
@@ -430,7 +407,6 @@ $('updateCheckBtn').addEventListener('click', () => checkForUpdate(true));
 $('updateBtn').addEventListener('click', installUpdate);
 $('newBtn').addEventListener('click', newScript);
 $('saveBtn').addEventListener('click', saveScript);
-$('enabledToggle').addEventListener('change', toggleScript);
 $('runBtn').addEventListener('click', runScript);
 $('deleteBtn').addEventListener('click', deleteScript);
 $('clearOutputBtn').addEventListener('click', clearOutput);
