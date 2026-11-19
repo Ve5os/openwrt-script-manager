@@ -13,7 +13,7 @@
         <div class="brand-mark">&gt;_</div>
         <div class="brand-info">
           <div class="brand-title">Script Manager</div>
-          <div class="brand-subtitle">Build <span id="buildVersion">2026.11.19.05</span></div>
+          <div class="brand-subtitle">Build <span id="buildVersion">2026.11.19.06</span></div>
         </div>
         <button id="updateCheckBtn" class="update-check-btn" type="button" title="Проверить обновления">↻</button>
       </div>
@@ -73,6 +73,10 @@
               <span>При запуске OpenWrt</span>
             </label>
             <label class="schedule-option">
+              <input type="radio" name="scheduleType" id="scheduleTypeManual" value="manual">
+              <span>Ручной cron</span>
+            </label>
+            <label class="schedule-option">
               <input type="radio" name="scheduleType" id="scheduleTypeInterval" value="interval">
               <span>Через интервал</span>
             </label>
@@ -89,6 +93,14 @@
           <div id="startupSettings" class="schedule-settings">
             <div class="inline-controls">
               <span>Скрипт запускается один раз при старте OpenWrt</span>
+            </div>
+          </div>
+
+          <div id="manualSettings" class="schedule-settings hidden">
+            <div class="manual-cron-wrap">
+              <span class="manual-cron-label">Cron</span>
+              <input id="manualCron" class="manual-cron-input" type="text" value="* * * * *" spellcheck="false" autocomplete="off">
+              <span class="manual-cron-help">Введите выражение cron вручную</span>
             </div>
           </div>
 
@@ -159,6 +171,6 @@ echo &quot;Hello, OpenWrt!&quot;"></textarea>
 
   <div id="toast" class="toast"></div>
 
-  <script src="app.js?v=2026.11.19.05"></script>
+  <script src="app.js?v=2026.11.19.06"></script>
 </body>
 </html>

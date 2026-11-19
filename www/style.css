@@ -145,7 +145,7 @@ pre { margin: 0; padding: 14px; max-height: 250px; overflow: auto; white-space: 
 .field-title { font-weight: 600; font-size: 13px; }
 .schedule-summary { margin-top: 3px; color: var(--muted); font-size: 12px; }
 .cron-chip { padding: 4px 7px; border-radius: 7px; border: 1px solid #303944; color: #7f8995; font: 10px ui-monospace, SFMono-Regular, Consolas, monospace; }
-.schedule-type-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-bottom: 15px; }
+.schedule-type-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; margin-bottom: 15px; }
 .schedule-option { position: relative; }
 .schedule-option input { position: absolute; opacity: 0; pointer-events: none; }
 .schedule-option span { display: block; padding: 10px 11px; border: 1px solid #2a313a; border-radius: 9px; color: #aab2bc; text-align: center; cursor: pointer; transition: .15s; }
@@ -161,6 +161,13 @@ pre { margin: 0; padding: 14px; max-height: 250px; overflow: auto; white-space: 
 .day-option span { display: block; padding: 9px 5px; border: 1px solid #2a313a; border-radius: 8px; color: #89929d; text-align: center; cursor: pointer; font-size: 12px; }
 .day-option input:checked + span { color: var(--text); background: #1a2230; border-color: #53647e; }
 .weekly-time { margin-top: 12px; }
+
+.manual-cron-wrap { display: grid; gap: 7px; }
+.manual-cron-label { color: var(--muted); font-size: 11px; }
+.manual-cron-input { width: 100%; box-sizing: border-box; border: 1px solid #2a313a; border-radius: 9px; background: #0c1014; color: var(--text); padding: 11px 12px; font: 12px ui-monospace, SFMono-Regular, Consolas, monospace; outline: none; }
+.manual-cron-input:focus { border-color: #53647e; box-shadow: 0 0 0 2px rgba(124,156,255,.08); }
+.manual-cron-help { color: #68717d; font-size: 10px; }
+
 .schedule-preview { margin-top: 15px; padding-top: 13px; border-top: 1px solid #252c34; color: var(--muted); font-size: 12px; }
 .schedule-preview strong { color: #dce1e7; font-weight: 500; margin-left: 4px; }
 @media (max-width: 800px) {

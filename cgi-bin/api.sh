@@ -5,7 +5,7 @@
 set -u
 
 SCRIPT_DIR="/etc/my_scripts"
-BUILD_VERSION="2026.11.19.05"
+BUILD_VERSION="2026.11.19.06"
 REPO_BASE="https://raw.githubusercontent.com/Ve5os/openwrt-script-manager/main"
 REPO_INSTALL="$REPO_BASE/install.sh"
 CRONTAB="/etc/crontabs/root"
@@ -298,13 +298,23 @@ case "$ACTION" in
     update)
         [ "${REQUEST_METHOD:-GET}" = 'POST' ] || error_json 400 'update доступен только через POST'
         requested="$(json_get version '')"
+        version_tmp="$TMP_BASE.version-update"
+        latest=""
+        if latest="$(fetch_remote_version "$version_tmp" 2>/dev/null || true)"; then
+            case "$latest" in
+                ''|*[!0-9.]*|.*|*.) latest='' ;;
+            esac
+        fi
         tmp="$TMP_BASE.install-update"
         if ! fetch_remote_install "$tmp"; then
             error_json 503 'Не удалось скачать обновление с GitHub'
         fi
-        latest="$(remote_version "$tmp")"
+        installer_version="$(remote_version "$tmp")"
+        [ -n "$latest" ] || latest="$installer_version"
         [ -n "$latest" ] || error_json 500 'Не удалось определить версию обновления'
+        [ -n "$installer_version" ] || error_json 500 'Не удалось определить версию установщика'
         [ "$requested" = "$latest" ] || error_json 409 'Версия обновления устарела, сначала проверьте обновления ещё раз'
+        [ "$installer_version" = "$latest" ] || error_json 409 'Версия установщика не совпадает с версией обновления'
         version_gt "$latest" "$BUILD_VERSION" || error_json 409 'Новая версия не найдена'
         update_script="/tmp/openwrt-script-manager-update.sh"
         update_log="/tmp/openwrt-script-manager-update.log"

@@ -1,6 +1,6 @@
 'use strict';
 
-const BUILD_VERSION = '2026.11.19.05';
+const BUILD_VERSION = '2026.11.19.06';
 const state = { scripts: [], current: null, creating: false, update: null };
 const $ = (id) => document.getElementById(id);
 
@@ -168,6 +168,12 @@ function cronFromUi() {
 
   if (type === 'startup') return '@reboot';
 
+  if (type === 'manual') {
+    const value = $('manualCron').value.trim();
+    if (!value) throw new Error('Укажите cron-расписание');
+    return value;
+  }
+
   if (type === 'interval') {
     const value = Math.max(1, Number.parseInt($('intervalValue').value, 10) || 1);
     const unit = $('intervalUnit').value;
@@ -201,6 +207,7 @@ function humanSchedule() {
   const type = document.querySelector('input[name="scheduleType"]:checked').value;
 
   if (type === 'startup') return 'при запуске OpenWrt';
+  if (type === 'manual') return $('manualCron').value.trim() || 'ручное cron-расписание';
 
   if (type === 'interval') {
     const value = Math.max(1, Number.parseInt($('intervalValue').value, 10) || 1);
@@ -221,6 +228,7 @@ function humanSchedule() {
 function updateScheduleUi() {
   const type = document.querySelector('input[name="scheduleType"]:checked').value;
   $('startupSettings').classList.toggle('hidden', type !== 'startup');
+  $('manualSettings').classList.toggle('hidden', type !== 'manual');
   $('intervalSettings').classList.toggle('hidden', type !== 'interval');
   $('dailySettings').classList.toggle('hidden', type !== 'daily');
   $('weeklySettings').classList.toggle('hidden', type !== 'weekly');
@@ -236,7 +244,12 @@ function parseCronToUi(schedule) {
     return true;
   }
   const parts = value.split(/\s+/);
-  if (parts.length !== 5) return false;
+  if (parts.length !== 5) {
+    $('scheduleTypeManual').checked = true;
+    $('manualCron').value = value;
+    updateScheduleUi();
+    return true;
+  }
   const [minute, hour, day, month, weekday] = parts;
 
   if (/^\*\/([1-9]\d*)$/.test(minute) && hour === '*' && day === '*' && month === '*' && weekday === '*') {
@@ -282,15 +295,19 @@ function parseCronToUi(schedule) {
     return true;
   }
 
-  return false;
+  $('scheduleTypeManual').checked = true;
+  $('manualCron').value = value;
+  updateScheduleUi();
+  return true;
 }
 
 function setScheduleFromCron(schedule) {
   const parsed = parseCronToUi(schedule);
   if (!parsed) {
-    $('scheduleTypeStartup').checked = true;
+    $('scheduleTypeManual').checked = true;
+    $('manualCron').value = (schedule || '').trim();
     updateScheduleUi();
-    showToast('Старое расписание не распознано — выбрано «каждую минуту».', true);
+    showToast('Расписание не распознано — оно открыто в ручном режиме.', true);
   }
 }
 
@@ -415,6 +432,7 @@ $('intervalValue').addEventListener('input', updateScheduleUi);
 $('intervalUnit').addEventListener('change', updateScheduleUi);
 $('dailyTime').addEventListener('change', updateScheduleUi);
 $('weeklyTime').addEventListener('change', updateScheduleUi);
+$('manualCron').addEventListener('input', updateScheduleUi);
 document.querySelectorAll('#weeklySettings .day-option input').forEach((el) => el.addEventListener('change', updateScheduleUi));
 
 (async function init() {
