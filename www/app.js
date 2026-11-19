@@ -5,6 +5,7 @@ const $ = (id) => document.getElementById(id);
 
 function showToast(message, error = false) {
   const el = $('toast');
+  if (!el) return;
   el.textContent = message;
   el.className = `toast show${error ? ' error' : ''}`;
   clearTimeout(showToast.timer);
@@ -72,11 +73,11 @@ async function checkForUpdate(manual = false) {
     const notice = $('updateNotice');
     const versionText = $('updateVersionText');
     if (result.update_available) {
-      versionText.textContent = `Текущая ${result.current_version} → новая ${result.latest_version}`;
-      notice.classList.remove('hidden');
+      if (versionText) versionText.textContent = `Текущая ${result.current_version} → новая ${result.latest_version}`;
+      if (notice) notice.classList.remove('hidden');
       if (manual) showToast(`Доступна сборка ${result.latest_version}`);
     } else {
-      notice.classList.add('hidden');
+      if (notice) notice.classList.add('hidden');
       if (manual) showToast(`Установлена последняя сборка ${result.current_version}`);
     }
   } catch (error) {
@@ -180,12 +181,14 @@ function setEditorVisible(visible) {
 }
 
 function updateStatus(enabled) {
-  $('statusBadge').textContent = enabled ? 'Вкл.' : 'Выкл.';
+  const badge = $('statusBadge');
+  if (badge) badge.textContent = enabled ? 'Вкл.' : 'Выкл.';
   $('statusBadge').className = `status-badge ${enabled ? 'on' : 'off'}`;
 }
 
 function clearOutput() {
-  $('output').textContent = '';
+  const output = $('output');
+  if (output) output.textContent = '';
   $('outputWrap').classList.add('hidden');
 }
 
@@ -258,8 +261,11 @@ function updateScheduleUi() {
   $('intervalSettings').classList.toggle('hidden', type !== 'interval');
   $('dailySettings').classList.toggle('hidden', type !== 'daily');
   $('weeklySettings').classList.toggle('hidden', type !== 'weekly');
-  $('humanSchedule').textContent = humanSchedule();
-  $('scheduleSummary').textContent = humanSchedule();
+  const scheduleText = humanSchedule();
+  const human = $('humanSchedule');
+  const summary = $('scheduleSummary');
+  if (human) human.textContent = scheduleText;
+  if (summary) summary.textContent = scheduleText;
 }
 
 function parseCronToUi(schedule) {
@@ -352,7 +358,8 @@ async function openScript(name) {
     const result = await apiGet('get', { name });
     state.current = result.name;
     state.creating = false;
-    $('editorTitle').textContent = displayName(result.name);
+    const editorTitle = $('editorTitle');
+    if (editorTitle) editorTitle.textContent = displayName(result.name);
     $('nameInput').value = displayName(result.name);
     $('nameInput').readOnly = true;
     setScheduleFromCron(result.schedule || '@reboot');
@@ -369,7 +376,8 @@ async function openScript(name) {
 function newScript() {
   state.current = null;
   state.creating = true;
-  $('editorTitle').textContent = 'Новый скрипт';
+  const editorTitle = $('editorTitle');
+  if (editorTitle) editorTitle.textContent = 'Новый скрипт';
   $('nameInput').value = '';
   $('nameInput').readOnly = false;
   $('scheduleTypeStartup').checked = true;
@@ -404,7 +412,8 @@ async function saveScript() {
     state.current = name;
     state.creating = false;
     $('nameInput').readOnly = true;
-    $('editorTitle').textContent = displayName(name);
+    const editorTitle = $('editorTitle');
+    if (editorTitle) editorTitle.textContent = displayName(name);
     showToast('Скрипт сохранён');
     await refreshList();
   } catch (error) {
@@ -416,17 +425,19 @@ async function runScript() {
   if (!state.current) return;
   clearOutput();
   $('runBtn').disabled = true;
-  $('runBtn').textContent = '⏳ Выполнение...';
+  const runButton = $('runBtn');
+  if (runButton) runButton.textContent = '⏳ Выполнение...';
 
   try {
     const result = await api('run', { name: state.current });
-    $('output').textContent = `${result.output || '(нет вывода)'}\n\n[Код завершения: ${result.exit_code ?? 0}]`;
+    const output = $('output');
+    if (output) output.textContent = `${result.output || '(нет вывода)'}\n\n[Код завершения: ${result.exit_code ?? 0}]`;
     $('outputWrap').classList.remove('hidden');
   } catch (error) {
     showToast(error.message, true);
   } finally {
     $('runBtn').disabled = false;
-    $('runBtn').textContent = '▶ Выполнить сейчас';
+    if (runButton) runButton.textContent = '▶ Выполнить сейчас';
   }
 }
 
