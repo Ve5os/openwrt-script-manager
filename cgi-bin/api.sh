@@ -5,7 +5,7 @@
 set -u
 
 SCRIPT_DIR="/etc/my_scripts"
-BUILD_VERSION="2026.11.19.08"
+BUILD_VERSION="2026.11.19.09"
 REPO_BASE="https://raw.githubusercontent.com/Ve5os/openwrt-script-manager/main"
 REPO_INSTALL="$REPO_BASE/install.sh"
 CRONTAB="/etc/crontabs/root"
@@ -353,7 +353,8 @@ EOF_UPDATE
         path="$(script_path "$name")" || error_json 400 'Некорректное имя скрипта'
         case "$schedule" in
             @reboot) ;;
-            *[!0-9*/,@\ -]*|*[![:space:]]*) error_json 400 'Некорректное cron-расписание' ;;
+            *[!0-9*/,\ @-]*) error_json 400 'Некорректное cron-расписание' ;;
+            '') error_json 400 'Некорректное cron-расписание' ;;
         esac
         old="$TMP_BASE.script"
         printf '%s' "$content" > "$old"
