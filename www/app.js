@@ -260,9 +260,6 @@ function updateScheduleUi() {
   $('intervalSettings').classList.toggle('hidden', type !== 'interval');
   $('dailySettings').classList.toggle('hidden', type !== 'daily');
   $('weeklySettings').classList.toggle('hidden', type !== 'weekly');
-  const scheduleText = humanSchedule();
-  const human = $('humanSchedule');
-  if (human) human.textContent = scheduleText;
 }
 
 function parseCronToUi(schedule) {
